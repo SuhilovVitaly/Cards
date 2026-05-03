@@ -4,6 +4,8 @@ public class TermCard
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
+    public string UserId { get; set; } = string.Empty;
+
     public Language Language1 { get; set; }
 
     public Language Language2 { get; set; }

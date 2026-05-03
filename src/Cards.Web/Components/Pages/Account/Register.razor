@@ -1,0 +1,111 @@
+@page "/register"
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Authorization
+@inject IUserService UserService
+@inject NavigationManager Navigation
+
+<PageTitle>Регистрация</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h1 class="mb-4">Регистрация</h1>
+
+        <EditForm Model="Input" OnValidSubmit="HandleRegister" FormName="register" method="post">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label" for="username">Имя пользователя</label>
+                <InputText id="username" class="form-control" @bind-Value="Input.Username" autocomplete="username" />
+                <ValidationMessage For="@(() => Input.Username)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="password">Пароль</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" autocomplete="new-password" />
+                <ValidationMessage For="@(() => Input.Password)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="password-confirm">Повторите пароль</label>
+                <InputText id="password-confirm" type="password" class="form-control" @bind-Value="Input.ConfirmPassword" autocomplete="new-password" />
+                <ValidationMessage For="@(() => Input.ConfirmPassword)" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+
+            <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+        </EditForm>
+
+        <div class="mt-3 text-center">
+            <span class="text-muted">Уже есть аккаунт?</span>
+            <a href="@($"login?returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}")">Войти</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    public RegisterInput Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private string? _errorMessage;
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            var user = await UserService.RegisterAsync(Input.Username, Input.Password);
+
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(System.Security.Claims.ClaimTypes.Name, user.Username)
+            };
+
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties { IsPersistent = true });
+
+            Navigation.NavigateTo(string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    public class RegisterInput : IValidatableObject
+    {
+        [Required(ErrorMessage = "Введите имя пользователя")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "От 3 до 50 символов")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Введите пароль")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Минимум 6 символов")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Подтвердите пароль")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (Password != ConfirmPassword)
+                yield return new ValidationResult("Пароли не совпадают", new[] { nameof(ConfirmPassword) });
+        }
+    }
+}

@@ -45,6 +45,9 @@
 </EditForm>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
     private readonly CollectionFormModel _model = new()
     {
         Language1 = Language.Ru,
@@ -60,7 +63,9 @@
         _saving = true;
         try
         {
-            await CollectionService.CreateAsync(_model.Name, _model.Language1, _model.Language2);
+            var state = await AuthStateTask;
+            var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            await CollectionService.CreateAsync(userId, _model.Name, _model.Language1, _model.Language2);
             Navigation.NavigateTo("");
         }
         finally

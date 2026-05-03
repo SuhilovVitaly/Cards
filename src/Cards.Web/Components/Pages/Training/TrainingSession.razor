@@ -99,6 +99,7 @@ else if (_currentCard is not null)
 @if (_showAddCard && _collection is not null)
 {
     <TermCardModal
+        UserId="_userId"
         Language1="_collection.Language1"
         Language2="_collection.Language2"
         OnSave="HandleCardSaved"
@@ -109,6 +110,10 @@ else if (_currentCard is not null)
 @code {
     [Parameter] public Guid CollectionId { get; set; }
 
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private string _userId = string.Empty;
     private Collection? _collection;
     private Queue<TermCard> _queue = new();
     private TermCard? _currentCard;
@@ -123,8 +128,12 @@ else if (_currentCard is not null)
 
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthStateTask;
+        _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
         _collection = await CollectionService.GetByIdAsync(CollectionId);
-        if (_collection is null || _collection.CardIds.Count == 0)
+        // Prevent access to collections that don't belong to the current user
+        if (_collection is null || _collection.UserId != _userId || _collection.CardIds.Count == 0)
         {
             Navigation.NavigateTo("");
             return;

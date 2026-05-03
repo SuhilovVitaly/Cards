@@ -22,7 +22,7 @@ public class JsonCollectionService : ICollectionService
         Directory.CreateDirectory(_dataDirectory);
     }
 
-    public async Task<IReadOnlyList<Collection>> GetAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<Collection>> GetAllAsync(string userId, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
         try
@@ -31,7 +31,7 @@ public class JsonCollectionService : ICollectionService
             foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
             {
                 var item = await ReadFromFileAsync(file, ct);
-                if (item is not null)
+                if (item is not null && item.UserId == userId)
                     collections.Add(item);
             }
             return collections.OrderByDescending(c => c.ModifiedAt).ToList();
@@ -55,11 +55,12 @@ public class JsonCollectionService : ICollectionService
         }
     }
 
-    public async Task<Collection> CreateAsync(string name, Language lang1, Language lang2, CancellationToken ct = default)
+    public async Task<Collection> CreateAsync(string userId, string name, Language lang1, Language lang2, CancellationToken ct = default)
     {
         var (l1, l2) = LanguageHelper.NormalizePair(lang1, lang2);
         var collection = new Collection
         {
+            UserId = userId,
             Name = name.Trim(),
             Language1 = l1,
             Language2 = l2

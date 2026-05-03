@@ -8,16 +8,37 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Коллекции
-            </NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Коллекции
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="collections/create">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Новая коллекция
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="collections/create">
+                        <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Новая коллекция
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3 mt-3 user-info">
+                    <div class="text-white-50 small">@context.User.Identity?.Name</div>
+                    <form action="logout" method="post" class="m-0 p-0">
+                        <AntiforgeryToken />
+                        <button type="submit" class="nav-link nav-logout-btn">
+                            <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span> Выйти
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <a class="nav-link" href="login">
+                        <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Войти
+                    </a>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>

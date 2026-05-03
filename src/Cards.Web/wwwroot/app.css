@@ -108,3 +108,22 @@ h1:focus {
     justify-content: center;
     background: #fafbfc;
 }
+
+/* Auth pages */
+.auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 4rem);
+    padding: 2rem 1rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    padding: 2rem;
+}

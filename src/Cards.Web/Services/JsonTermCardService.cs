@@ -56,6 +56,7 @@ public class JsonTermCardService : ITermCardService
     }
 
     public async Task<TermCard> CreateAsync(
+        string userId,
         Language lang1,
         Language lang2,
         string text1,
@@ -68,6 +69,7 @@ public class JsonTermCardService : ITermCardService
 
         var card = new TermCard
         {
+            UserId = userId,
             Language1 = l1,
             Language2 = l2,
             Value1 = new TermValue

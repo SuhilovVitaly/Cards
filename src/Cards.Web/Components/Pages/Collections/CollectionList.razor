@@ -101,6 +101,7 @@ else
 @if (_addCardCollection is not null)
 {
     <TermCardModal
+        UserId="_userId"
         Language1="_addCardCollection.Language1"
         Language2="_addCardCollection.Language2"
         OnSave="HandleCardSaved"
@@ -109,18 +110,24 @@ else
 }
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private string _userId = string.Empty;
     private List<Collection>? _collections;
     private Collection? _collectionToDelete;
     private Collection? _addCardCollection;
 
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthStateTask;
+        _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        var result = await CollectionService.GetAllAsync();
+        var result = await CollectionService.GetAllAsync(_userId);
         _collections = result.ToList();
     }
 

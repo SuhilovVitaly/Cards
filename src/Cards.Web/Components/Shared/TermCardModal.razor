@@ -116,6 +116,7 @@
 </div>
 
 @code {
+    [Parameter, EditorRequired] public string UserId { get; set; } = string.Empty;
     [Parameter, EditorRequired] public Language Language1 { get; set; }
     [Parameter, EditorRequired] public Language Language2 { get; set; }
     [Parameter] public EventCallback<TermCard> OnSave { get; set; }
@@ -196,6 +197,7 @@
     private async Task<TermCard> CreateCardAsync()
     {
         return await TermCardService.CreateAsync(
+            UserId,
             Language1, Language2,
             _text1, _text2,
             _image1DataUrl, _image2DataUrl);

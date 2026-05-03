@@ -9,6 +9,7 @@ public interface ITermCardService
     Task<List<TermCard>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
 
     Task<TermCard> CreateAsync(
+        string userId,
         Language lang1,
         Language lang2,
         string text1,
