@@ -1,0 +1,19 @@
+{
+  "id": "97f132e9-6b3d-4ef8-ab34-cd352acf9a3c",
+  "language1": "En",
+  "language2": "Ru",
+  "value1": {
+    "text": "World",
+    "imageDataUrl": null,
+    "audioStatus": "Pending",
+    "audioPath": null
+  },
+  "value2": {
+    "text": "\u0421\u043B\u043E\u0432\u043E",
+    "imageDataUrl": null,
+    "audioStatus": "Pending",
+    "audioPath": null
+  },
+  "createdAt": "2026-05-03T08:18:54.8539144Z",
+  "modifiedAt": "2026-05-03T08:18:54.8539147Z"
+}

@@ -1,0 +1,88 @@
+@page "/collections/create"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@inject ICollectionService CollectionService
+@inject NavigationManager Navigation
+
+<PageTitle>Новая коллекция</PageTitle>
+
+<h1>Новая коллекция</h1>
+
+<EditForm Model="_model" OnValidSubmit="HandleValidSubmit" FormName="collection-create">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label" for="collection-name">Название</label>
+        <InputText id="collection-name" class="form-control" @bind-Value="_model.Name" />
+        <ValidationMessage For="@(() => _model.Name)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="lang1">Язык 1</label>
+        <InputSelect id="lang1" class="form-select" @bind-Value="_model.Language1">
+            @foreach (var lang in Enum.GetValues<Language>())
+            {
+                <option value="@lang">@LanguageHelper.GetDisplayName(lang)</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="lang2">Язык 2</label>
+        <InputSelect id="lang2" class="form-select" @bind-Value="_model.Language2">
+            @foreach (var lang in Enum.GetValues<Language>())
+            {
+                <option value="@lang">@LanguageHelper.GetDisplayName(lang)</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="@(() => _model.Language2)" />
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@_saving">Создать</button>
+        <a class="btn btn-outline-secondary" href="">Отмена</a>
+    </div>
+</EditForm>
+
+@code {
+    private readonly CollectionFormModel _model = new()
+    {
+        Language1 = Language.Ru,
+        Language2 = Language.En
+    };
+
+    private bool _saving;
+
+    private async Task HandleValidSubmit()
+    {
+        if (_model.Language1 == _model.Language2) return;
+
+        _saving = true;
+        try
+        {
+            await CollectionService.CreateAsync(_model.Name, _model.Language1, _model.Language2);
+            Navigation.NavigateTo("");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    public class CollectionFormModel : IValidatableObject
+    {
+        [Required(ErrorMessage = "Введите название")]
+        [StringLength(100, ErrorMessage = "Максимум 100 символов")]
+        public string Name { get; set; } = string.Empty;
+
+        public Language Language1 { get; set; }
+
+        public Language Language2 { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (Language1 == Language2)
+                yield return new ValidationResult("Языки должны отличаться", new[] { nameof(Language2) });
+        }
+    }
+}

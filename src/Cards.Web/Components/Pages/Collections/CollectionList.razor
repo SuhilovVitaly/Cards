@@ -1,0 +1,159 @@
+@page "/"
+@rendermode InteractiveServer
+@inject ICollectionService CollectionService
+@inject ITermCardService TermCardService
+@inject NavigationManager Navigation
+
+<PageTitle>Коллекции</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Коллекции</h1>
+    <a class="btn btn-primary" href="collections/create">+ Новая коллекция</a>
+</div>
+
+@if (_collections is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else if (_collections.Count == 0)
+{
+    <div class="alert alert-info">
+        У вас пока нет ни одной коллекции. <a href="collections/create">Создайте первую</a>.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Карточек</th>
+                    <th>Дата создания</th>
+                    <th class="text-end">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var col in _collections)
+                {
+                    <tr>
+                        <td>
+                            <strong>@col.Name</strong>
+                            <br />
+                            <small class="text-muted">
+                                @LanguageHelper.GetPairDisplayName(col.Language1, col.Language2)
+                            </small>
+                        </td>
+                        <td>@col.CardIds.Count</td>
+                        <td>@col.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        @onclick="() => OpenAddCard(col)">
+                                    + Карточка
+                                </button>
+                                @if (col.CardIds.Count > 0)
+                                {
+                                    <a class="btn btn-sm btn-success"
+                                       href="@($"training/{col.Id}")">
+                                        Тренировка
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-success" disabled>
+                                        Тренировка
+                                    </button>
+                                }
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => AskDelete(col)">
+                                    Удалить
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (_collectionToDelete is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Удалить коллекцию?</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Коллекция <strong>@_collectionToDelete.Name</strong> будет удалена.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelDelete">Отмена</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_addCardCollection is not null)
+{
+    <TermCardModal
+        Language1="_addCardCollection.Language1"
+        Language2="_addCardCollection.Language2"
+        OnSave="HandleCardSaved"
+        OnSaveAndContinue="HandleCardSavedAndContinue"
+        OnClose="CloseAddCard" />
+}
+
+@code {
+    private List<Collection>? _collections;
+    private Collection? _collectionToDelete;
+    private Collection? _addCardCollection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await CollectionService.GetAllAsync();
+        _collections = result.ToList();
+    }
+
+    private void OpenAddCard(Collection collection) => _addCardCollection = collection;
+    private void CloseAddCard() => _addCardCollection = null;
+
+    private async Task HandleCardSaved(TermCard card)
+    {
+        if (_addCardCollection is not null)
+        {
+            await CollectionService.AddCardAsync(_addCardCollection.Id, card.Id);
+            _addCardCollection = null;
+            await LoadAsync();
+        }
+    }
+
+    private async Task HandleCardSavedAndContinue(TermCard card)
+    {
+        if (_addCardCollection is not null)
+        {
+            await CollectionService.AddCardAsync(_addCardCollection.Id, card.Id);
+            await LoadAsync();
+        }
+    }
+
+    private void AskDelete(Collection collection) => _collectionToDelete = collection;
+    private void CancelDelete() => _collectionToDelete = null;
+
+    private async Task ConfirmDelete()
+    {
+        if (_collectionToDelete is null) return;
+        await CollectionService.DeleteAsync(_collectionToDelete.Id);
+        _collectionToDelete = null;
+        await LoadAsync();
+    }
+}

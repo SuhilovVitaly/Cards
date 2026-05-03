@@ -1,0 +1,29 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Ошибка</PageTitle>
+
+<h1 class="text-danger">Произошла ошибка</h1>
+<p>При обработке запроса возникла непредвиденная ошибка.</p>
+
+@if (ShowRequestId)
+{
+    <p>
+        <strong>Идентификатор запроса:</strong> <code>@RequestId</code>
+    </p>
+}
+
+<p>
+    <a class="btn btn-primary" href="">На главную</a>
+</p>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

@@ -1,0 +1,269 @@
+@page "/training/{CollectionId:guid}"
+@rendermode InteractiveServer
+@inject ICollectionService CollectionService
+@inject ITermCardService TermCardService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Тренировка</PageTitle>
+
+@if (_collection is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else if (!_sessionActive)
+{
+    <div class="text-center mt-5">
+        <h2>Тренировка завершена</h2>
+        <p class="lead mt-3">
+            <span class="text-success fw-bold">@_correct</span> /
+            <span class="text-danger fw-bold">@_incorrect</span> /
+            <span>@_total</span>
+        </p>
+        <a class="btn btn-primary mt-3" href="">К коллекциям</a>
+    </div>
+}
+else if (_currentCard is not null)
+{
+    <div class="training-screen">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="FinishSession">
+                Завершить
+            </button>
+
+            <div class="d-flex align-items-center gap-3">
+                <select class="form-select form-select-sm" style="width:auto;"
+                        value="@_selectedLanguage" @onchange="OnLanguageChanged">
+                    <option value="@_collection.Language1">
+                        @LanguageHelper.GetDisplayName(_collection.Language1)
+                    </option>
+                    <option value="@_collection.Language2">
+                        @LanguageHelper.GetDisplayName(_collection.Language2)
+                    </option>
+                </select>
+
+                <span class="training-progress">
+                    <span class="text-success fw-bold">@_correct</span> /
+                    <span class="text-danger fw-bold">@_incorrect</span> /
+                    <span>@_total</span>
+                </span>
+            </div>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAddCard">
+                + Карточка
+            </button>
+        </div>
+
+        @{
+            var currentValue = GetCurrentValue();
+            var currentLang = GetCurrentLanguage();
+        }
+
+        <div class="training-card">
+            <div class="training-card-image">
+                @if (!string.IsNullOrEmpty(currentValue.ImageDataUrl))
+                {
+                    <img src="@currentValue.ImageDataUrl" alt="" />
+                }
+            </div>
+            <div class="training-card-text" dir="@LanguageHelper.GetTextDirection(currentLang)">
+                @currentValue.Text
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm mt-3"
+                    @onclick="SpeakCurrentCardAsync"
+                    title="Воспроизвести">
+                🔊
+            </button>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-center mt-4">
+            @if (!_answered)
+            {
+                <button type="button" class="btn btn-danger btn-lg" @onclick="HandleDontRemember">
+                    Не помню
+                </button>
+                <button type="button" class="btn btn-success btn-lg" @onclick="HandleRemember">
+                    Помню
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-primary btn-lg" @onclick="HandleNext">
+                    Далее
+                </button>
+            }
+        </div>
+    </div>
+}
+
+@if (_showAddCard && _collection is not null)
+{
+    <TermCardModal
+        Language1="_collection.Language1"
+        Language2="_collection.Language2"
+        OnSave="HandleCardSaved"
+        OnSaveAndContinue="HandleCardSavedAndContinue"
+        OnClose="CloseAddCard" />
+}
+
+@code {
+    [Parameter] public Guid CollectionId { get; set; }
+
+    private Collection? _collection;
+    private Queue<TermCard> _queue = new();
+    private TermCard? _currentCard;
+    private Language _selectedLanguage;
+    private bool _answered;
+    private int _correct;
+    private int _incorrect;
+    private int _total;
+    private bool _sessionActive;
+    private bool _showAddCard;
+    private bool _needsAutoPlay;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _collection = await CollectionService.GetByIdAsync(CollectionId);
+        if (_collection is null || _collection.CardIds.Count == 0)
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        _selectedLanguage = _collection.Language1;
+        await StartSession();
+        _needsAutoPlay = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_needsAutoPlay)
+        {
+            _needsAutoPlay = false;
+            await SpeakCurrentCardAsync();
+        }
+    }
+
+    private async Task StartSession()
+    {
+        if (_collection is null) return;
+
+        var cards = await TermCardService.GetByIdsAsync(_collection.CardIds);
+        var shuffled = Shuffle(cards);
+        _queue = new Queue<TermCard>(shuffled);
+        _total = shuffled.Count;
+        _correct = 0;
+        _incorrect = 0;
+        _answered = false;
+        _sessionActive = _queue.Count > 0;
+        _currentCard = _queue.Count > 0 ? _queue.Dequeue() : null;
+    }
+
+    private async Task HandleRemember()
+    {
+        _correct++;
+        AdvanceToNext();
+        await SpeakCurrentCardAsync();
+    }
+
+    private async Task HandleDontRemember()
+    {
+        _incorrect++;
+        _answered = true;
+        _queue.Enqueue(_currentCard!);
+        await SpeakCurrentCardAsync();
+    }
+
+    private async Task HandleNext()
+    {
+        AdvanceToNext();
+        await SpeakCurrentCardAsync();
+    }
+
+    private void AdvanceToNext()
+    {
+        _answered = false;
+        if (_queue.Count > 0)
+        {
+            _currentCard = _queue.Dequeue();
+        }
+        else
+        {
+            _sessionActive = false;
+            _currentCard = null;
+        }
+    }
+
+    private async Task FinishSession()
+    {
+        _sessionActive = false;
+        await JS.InvokeVoidAsync("cardsApp.stopSpeaking");
+    }
+
+    private async Task OnLanguageChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<Language>(e.Value?.ToString(), out var lang))
+        {
+            _selectedLanguage = lang;
+            await StartSession();
+            _needsAutoPlay = true;
+        }
+    }
+
+    private async Task SpeakCurrentCardAsync()
+    {
+        if (_currentCard is null || _collection is null) return;
+        var value = GetCurrentValue();
+        var lang = GetCurrentLanguage();
+        await JS.InvokeVoidAsync("cardsApp.speakText", value.Text, LanguageHelper.GetSpeechCode(lang));
+    }
+
+    private Language GetCurrentLanguage()
+    {
+        if (_answered)
+        {
+            return _selectedLanguage == _collection!.Language1
+                ? _collection.Language2
+                : _collection.Language1;
+        }
+        return _selectedLanguage;
+    }
+
+    private TermValue GetCurrentValue()
+    {
+        if (_currentCard is null) return new TermValue();
+
+        var lang = GetCurrentLanguage();
+        return lang == _currentCard.Language1
+            ? _currentCard.Value1
+            : _currentCard.Value2;
+    }
+
+    private void OpenAddCard() => _showAddCard = true;
+    private void CloseAddCard() => _showAddCard = false;
+
+    private async Task HandleCardSaved(TermCard card)
+    {
+        if (_collection is not null)
+            await CollectionService.AddCardAsync(_collection.Id, card.Id);
+        _showAddCard = false;
+    }
+
+    private async Task HandleCardSavedAndContinue(TermCard card)
+    {
+        if (_collection is not null)
+            await CollectionService.AddCardAsync(_collection.Id, card.Id);
+    }
+
+    private static List<T> Shuffle<T>(List<T> list)
+    {
+        var result = new List<T>(list);
+        var rng = Random.Shared;
+        for (int i = result.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (result[i], result[j]) = (result[j], result[i]);
+        }
+        return result;
+    }
+}

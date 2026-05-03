@@ -1,0 +1,221 @@
+@implements IAsyncDisposable
+@inject ITermCardService TermCardService
+@inject IJSRuntime JS
+
+<div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новая карточка</h5>
+                <button type="button" class="btn-close" @onclick="OnClose"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">@LanguageHelper.GetDisplayName(Language1)</label>
+
+                        <div class="mb-2">
+                            <div class="input-group">
+                                <input type="text" id="text1" class="form-control"
+                                       dir="@LanguageHelper.GetTextDirection(Language1)"
+                                       placeholder="@($"Текст ({LanguageHelper.GetDisplayName(Language1)})")"
+                                       maxlength="50"
+                                       value="@_text1"
+                                       @oninput="e => _text1 = e.Value?.ToString() ?? string.Empty" />
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
+                                        disabled="@string.IsNullOrWhiteSpace(_text1)"
+                                        @onclick="() => SpeakAsync(_text1, Language1)"
+                                        title="Воспроизвести">🔊</button>
+                            </div>
+                            @if (_text1.Length > 50)
+                            {
+                                <div class="text-danger small mt-1">Максимум 50 символов</div>
+                            }
+                        </div>
+
+                        <div class="mb-2">
+                            @if (!string.IsNullOrEmpty(_image1DataUrl))
+                            {
+                                <div class="position-relative d-inline-block">
+                                    <img src="@_image1DataUrl" class="img-thumbnail" style="max-height:120px;" alt="" />
+                                    <button type="button"
+                                            class="btn btn-sm btn-danger position-absolute top-0 end-0"
+                                            @onclick="() => _image1DataUrl = null">✕</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="image-placeholder" id="paste-zone-1">
+                                    <span class="text-muted">Нет изображения</span>
+                                </div>
+                            }
+                            <InputFile id="image-upload-1"
+                                       class="form-control form-control-sm mt-1"
+                                       accept="image/*"
+                                       OnChange="HandleImage1Upload" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">@LanguageHelper.GetDisplayName(Language2)</label>
+
+                        <div class="mb-2">
+                            <div class="input-group">
+                                <input type="text" id="text2" class="form-control"
+                                       dir="@LanguageHelper.GetTextDirection(Language2)"
+                                       placeholder="@($"Текст ({LanguageHelper.GetDisplayName(Language2)})")"
+                                       maxlength="50"
+                                       value="@_text2"
+                                       @oninput="e => _text2 = e.Value?.ToString() ?? string.Empty" />
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
+                                        disabled="@string.IsNullOrWhiteSpace(_text2)"
+                                        @onclick="() => SpeakAsync(_text2, Language2)"
+                                        title="Воспроизвести">🔊</button>
+                            </div>
+                            @if (_text2.Length > 50)
+                            {
+                                <div class="text-danger small mt-1">Максимум 50 символов</div>
+                            }
+                        </div>
+
+                        <div class="mb-2">
+                            @if (!string.IsNullOrEmpty(_image2DataUrl))
+                            {
+                                <div class="position-relative d-inline-block">
+                                    <img src="@_image2DataUrl" class="img-thumbnail" style="max-height:120px;" alt="" />
+                                    <button type="button"
+                                            class="btn btn-sm btn-danger position-absolute top-0 end-0"
+                                            @onclick="() => _image2DataUrl = null">✕</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="image-placeholder" id="paste-zone-2">
+                                    <span class="text-muted">Нет изображения</span>
+                                </div>
+                            }
+                            <InputFile id="image-upload-2"
+                                       class="form-control form-control-sm mt-1"
+                                       accept="image/*"
+                                       OnChange="HandleImage2Upload" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" @onclick="OnClose">Отмена</button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave"
+                        disabled="@(!IsValid)">Сохранить</button>
+                <button type="button" class="btn btn-outline-primary" @onclick="HandleSaveAndContinue"
+                        disabled="@(!IsValid)">Сохранить и продолжить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Language Language1 { get; set; }
+    [Parameter, EditorRequired] public Language Language2 { get; set; }
+    [Parameter] public EventCallback<TermCard> OnSave { get; set; }
+    [Parameter] public EventCallback<TermCard> OnSaveAndContinue { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _text1 = string.Empty;
+    private string _text2 = string.Empty;
+    private string? _image1DataUrl;
+    private string? _image2DataUrl;
+    private DotNetObjectReference<TermCardModal>? _dotNetRef;
+
+    private bool IsValid =>
+        !string.IsNullOrWhiteSpace(_text1) && _text1.Length <= 50 &&
+        !string.IsNullOrWhiteSpace(_text2) && _text2.Length <= 50;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("cardsApp.initPasteHandlers", _dotNetRef);
+            await JS.InvokeVoidAsync("cardsApp.focusElement", "text1");
+        }
+    }
+
+    [JSInvokable]
+    public void OnImagePasted(int slot, string dataUrl)
+    {
+        if (slot == 1)
+            _image1DataUrl = dataUrl;
+        else
+            _image2DataUrl = dataUrl;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e, int slot)
+    {
+        var file = e.File;
+        if (file is null || !file.ContentType.StartsWith("image/")) return;
+
+        const long maxSize = 5 * 1024 * 1024;
+        await using var stream = file.OpenReadStream(maxSize);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var base64 = Convert.ToBase64String(ms.ToArray());
+        var dataUrl = $"data:{file.ContentType};base64,{base64}";
+
+        if (slot == 1) _image1DataUrl = dataUrl;
+        else _image2DataUrl = dataUrl;
+    }
+
+    private Task HandleImage1Upload(InputFileChangeEventArgs e) => HandleImageUpload(e, 1);
+    private Task HandleImage2Upload(InputFileChangeEventArgs e) => HandleImageUpload(e, 2);
+
+    private async Task SpeakAsync(string text, Language language)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        await JS.InvokeVoidAsync("cardsApp.speakText", text, LanguageHelper.GetSpeechCode(language));
+    }
+
+    private async Task HandleSave()
+    {
+        if (!IsValid) return;
+        var card = await CreateCardAsync();
+        await OnSave.InvokeAsync(card);
+    }
+
+    private async Task HandleSaveAndContinue()
+    {
+        if (!IsValid) return;
+        var card = await CreateCardAsync();
+        ResetForm();
+        await OnSaveAndContinue.InvokeAsync(card);
+        await JS.InvokeVoidAsync("cardsApp.focusElement", "text1");
+    }
+
+    private async Task<TermCard> CreateCardAsync()
+    {
+        return await TermCardService.CreateAsync(
+            Language1, Language2,
+            _text1, _text2,
+            _image1DataUrl, _image2DataUrl);
+    }
+
+    private void ResetForm()
+    {
+        _text1 = string.Empty;
+        _text2 = string.Empty;
+        _image1DataUrl = null;
+        _image2DataUrl = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("cardsApp.disposePasteHandlers");
+        }
+        catch (JSDisconnectedException) { }
+        _dotNetRef?.Dispose();
+    }
+}
