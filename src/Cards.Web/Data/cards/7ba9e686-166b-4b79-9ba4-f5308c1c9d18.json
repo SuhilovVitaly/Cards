@@ -1,0 +1,20 @@
+{
+  "id": "7ba9e686-166b-4b79-9ba4-f5308c1c9d18",
+  "userId": "_userId",
+  "language1": "He",
+  "language2": "Ru",
+  "value1": {
+    "text": "\u05DB\u05DC\u05D9\u05D5\u05EA",
+    "imageDataUrl": null,
+    "audioStatus": "Pending",
+    "audioPath": null
+  },
+  "value2": {
+    "text": "\u041F\u043E\u0447\u043A\u0438",
+    "imageDataUrl": null,
+    "audioStatus": "Pending",
+    "audioPath": null
+  },
+  "createdAt": "2026-05-03T09:03:45.6794603Z",
+  "modifiedAt": "2026-05-03T09:03:45.6794605Z"
+}

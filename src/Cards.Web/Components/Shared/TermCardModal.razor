@@ -1,5 +1,6 @@
 @implements IAsyncDisposable
 @inject ITermCardService TermCardService
+@inject ITranslationService TranslationService
 @inject IJSRuntime JS
 
 <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
@@ -21,7 +22,7 @@
                                        placeholder="@($"Text ({LanguageHelper.GetDisplayName(Language1)})")"
                                        maxlength="50"
                                        value="@_text1"
-                                       @oninput="e => _text1 = e.Value?.ToString() ?? string.Empty" />
+                                       @oninput="OnText1Input" />
                                 <button type="button"
                                         class="btn btn-outline-secondary"
                                         disabled="@string.IsNullOrWhiteSpace(_text1)"
@@ -67,7 +68,7 @@
                                        placeholder="@($"Text ({LanguageHelper.GetDisplayName(Language2)})")"
                                        maxlength="50"
                                        value="@_text2"
-                                       @oninput="e => _text2 = e.Value?.ToString() ?? string.Empty" />
+                                       @oninput="OnText2Input" />
                                 <button type="button"
                                         class="btn btn-outline-secondary"
                                         disabled="@string.IsNullOrWhiteSpace(_text2)"
@@ -123,11 +124,19 @@
     [Parameter] public EventCallback<TermCard> OnSaveAndContinue { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
+    private const int TranslationDebounceMs = 700;
+
     private string _text1 = string.Empty;
     private string _text2 = string.Empty;
     private string? _image1DataUrl;
     private string? _image2DataUrl;
     private DotNetObjectReference<TermCardModal>? _dotNetRef;
+
+    // Tracks the last value we auto-filled into each field, so we can update it
+    // again on subsequent edits, but never overwrite text the user typed manually.
+    private string _lastAutoText1 = string.Empty;
+    private string _lastAutoText2 = string.Empty;
+    private CancellationTokenSource? _debounceCts;
 
     private bool IsValid =>
         !string.IsNullOrWhiteSpace(_text1) && _text1.Length <= 50 &&
@@ -178,6 +187,71 @@
         await JS.InvokeVoidAsync("cardsApp.speakText", text, LanguageHelper.GetSpeechCode(language));
     }
 
+    private void OnText1Input(ChangeEventArgs e)
+    {
+        _text1 = e.Value?.ToString() ?? string.Empty;
+        ScheduleTranslation(sourceField: 1);
+    }
+
+    private void OnText2Input(ChangeEventArgs e)
+    {
+        _text2 = e.Value?.ToString() ?? string.Empty;
+        ScheduleTranslation(sourceField: 2);
+    }
+
+    private void ScheduleTranslation(int sourceField)
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        _ = TranslateAfterDelayAsync(sourceField, token);
+    }
+
+    private async Task TranslateAfterDelayAsync(int sourceField, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TranslationDebounceMs, ct);
+            await PerformTranslationAsync(sourceField, ct);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task PerformTranslationAsync(int sourceField, CancellationToken ct)
+    {
+        if (sourceField == 1)
+        {
+            var source = _text1;
+            if (string.IsNullOrWhiteSpace(source)) return;
+            // Don't overwrite text the user typed manually into the target field
+            if (!string.IsNullOrEmpty(_text2) && _text2 != _lastAutoText2) return;
+
+            var translated = await TranslationService.TranslateAsync(source, Language1, Language2, ct);
+            if (ct.IsCancellationRequested || string.IsNullOrEmpty(translated)) return;
+            // Source may have changed while we were waiting for the response
+            if (_text1 != source) return;
+
+            _text2 = translated;
+            _lastAutoText2 = translated;
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            var source = _text2;
+            if (string.IsNullOrWhiteSpace(source)) return;
+            if (!string.IsNullOrEmpty(_text1) && _text1 != _lastAutoText1) return;
+
+            var translated = await TranslationService.TranslateAsync(source, Language2, Language1, ct);
+            if (ct.IsCancellationRequested || string.IsNullOrEmpty(translated)) return;
+            if (_text2 != source) return;
+
+            _text1 = translated;
+            _lastAutoText1 = translated;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private async Task HandleSave()
     {
         if (!IsValid) return;
@@ -205,14 +279,19 @@
 
     private void ResetForm()
     {
+        _debounceCts?.Cancel();
         _text1 = string.Empty;
         _text2 = string.Empty;
         _image1DataUrl = null;
         _image2DataUrl = null;
+        _lastAutoText1 = string.Empty;
+        _lastAutoText2 = string.Empty;
     }
 
     public async ValueTask DisposeAsync()
     {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
         try
         {
             await JS.InvokeVoidAsync("cardsApp.disposePasteHandlers");

@@ -37,6 +37,13 @@ builder.Services.AddSingleton<IUserService, JsonUserService>();
 builder.Services.AddSingleton<ICollectionService, JsonCollectionService>();
 builder.Services.AddSingleton<ITermCardService, JsonTermCardService>();
 
+builder.Services.AddHttpClient<ITranslationService, GoogleTranslationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(8);
+    // A User-Agent helps avoid 403 from the public Google translate endpoint
+    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 Cards.Web");
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
