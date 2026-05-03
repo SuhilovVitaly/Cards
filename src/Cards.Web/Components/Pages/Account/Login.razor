@@ -7,23 +7,23 @@
 @inject IUserService UserService
 @inject NavigationManager Navigation
 
-<PageTitle>Вход</PageTitle>
+<PageTitle>Sign in</PageTitle>
 
 <div class="auth-page">
     <div class="auth-card">
-        <h1 class="mb-4">Вход</h1>
+        <h1 class="mb-4">Sign in</h1>
 
         <EditForm Model="Input" OnValidSubmit="HandleLogin" FormName="login" method="post">
             <DataAnnotationsValidator />
 
             <div class="mb-3">
-                <label class="form-label" for="username">Имя пользователя</label>
+                <label class="form-label" for="username">Username</label>
                 <InputText id="username" class="form-control" @bind-Value="Input.Username" autocomplete="username" />
                 <ValidationMessage For="@(() => Input.Username)" />
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="password">Пароль</label>
+                <label class="form-label" for="password">Password</label>
                 <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" autocomplete="current-password" />
                 <ValidationMessage For="@(() => Input.Password)" />
             </div>
@@ -33,12 +33,12 @@
                 <div class="alert alert-danger">@_errorMessage</div>
             }
 
-            <button type="submit" class="btn btn-primary w-100">Войти</button>
+            <button type="submit" class="btn btn-primary w-100">Sign in</button>
         </EditForm>
 
         <div class="mt-3 text-center">
-            <span class="text-muted">Нет аккаунта?</span>
-            <a href="@($"register?returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}")">Зарегистрироваться</a>
+            <span class="text-muted">Don't have an account?</span>
+            <a href="@($"register?returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}")">Sign up</a>
         </div>
     </div>
 </div>
@@ -60,7 +60,7 @@
         var user = await UserService.AuthenticateAsync(Input.Username, Input.Password);
         if (user is null)
         {
-            _errorMessage = "Неверное имя пользователя или пароль.";
+            _errorMessage = "Invalid username or password.";
             return;
         }
 
@@ -83,10 +83,10 @@
 
     public class LoginInput
     {
-        [Required(ErrorMessage = "Введите имя пользователя")]
+        [Required(ErrorMessage = "Enter your username")]
         public string Username { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Введите пароль")]
+        [Required(ErrorMessage = "Enter your password")]
         public string Password { get; set; } = string.Empty;
     }
 }

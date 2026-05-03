@@ -1,20 +1,20 @@
 ﻿@page "/Error"
 @using System.Diagnostics
 
-<PageTitle>Ошибка</PageTitle>
+<PageTitle>Error</PageTitle>
 
-<h1 class="text-danger">Произошла ошибка</h1>
-<p>При обработке запроса возникла непредвиденная ошибка.</p>
+<h1 class="text-danger">An error occurred</h1>
+<p>An unexpected error occurred while processing your request.</p>
 
 @if (ShowRequestId)
 {
     <p>
-        <strong>Идентификатор запроса:</strong> <code>@RequestId</code>
+        <strong>Request ID:</strong> <code>@RequestId</code>
     </p>
 }
 
 <p>
-    <a class="btn btn-primary" href="">На главную</a>
+    <a class="btn btn-primary" href="">Back to home</a>
 </p>
 
 @code {

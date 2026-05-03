@@ -42,7 +42,7 @@ public class JsonUserService : IUserService
         {
             var existing = await FindByUsernameInternalAsync(username, ct);
             if (existing is not null)
-                throw new InvalidOperationException("Пользователь с таким именем уже существует.");
+                throw new InvalidOperationException("A user with this name already exists.");
 
             var (hash, salt) = PasswordHasher.Hash(password);
             var user = new User

@@ -4,21 +4,21 @@
 @inject ITermCardService TermCardService
 @inject NavigationManager Navigation
 
-<PageTitle>Коллекции</PageTitle>
+<PageTitle>Collections</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Коллекции</h1>
-    <a class="btn btn-primary" href="collections/create">+ Новая коллекция</a>
+    <h1 class="mb-0">Collections</h1>
+    <a class="btn btn-primary" href="collections/create">+ New collection</a>
 </div>
 
 @if (_collections is null)
 {
-    <p><em>Загрузка...</em></p>
+    <p><em>Loading...</em></p>
 }
 else if (_collections.Count == 0)
 {
     <div class="alert alert-info">
-        У вас пока нет ни одной коллекции. <a href="collections/create">Создайте первую</a>.
+        You don't have any collections yet. <a href="collections/create">Create your first one</a>.
     </div>
 }
 else
@@ -27,10 +27,10 @@ else
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th>Название</th>
-                    <th>Карточек</th>
-                    <th>Дата создания</th>
-                    <th class="text-end">Действия</th>
+                    <th>Name</th>
+                    <th>Cards</th>
+                    <th>Created</th>
+                    <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -45,29 +45,29 @@ else
                             </small>
                         </td>
                         <td>@col.CardIds.Count</td>
-                        <td>@col.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                        <td>@col.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</td>
                         <td class="text-end">
                             <div class="d-flex gap-2 justify-content-end flex-wrap">
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                         @onclick="() => OpenAddCard(col)">
-                                    + Карточка
+                                    + Card
                                 </button>
                                 @if (col.CardIds.Count > 0)
                                 {
                                     <a class="btn btn-sm btn-success"
                                        href="@($"training/{col.Id}")">
-                                        Тренировка
+                                        Train
                                     </a>
                                 }
                                 else
                                 {
                                     <button type="button" class="btn btn-sm btn-success" disabled>
-                                        Тренировка
+                                        Train
                                     </button>
                                 }
                                 <button type="button" class="btn btn-sm btn-outline-danger"
                                         @onclick="() => AskDelete(col)">
-                                    Удалить
+                                    Delete
                                 </button>
                             </div>
                         </td>
@@ -84,14 +84,14 @@ else
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Удалить коллекцию?</h5>
+                    <h5 class="modal-title">Delete collection?</h5>
                 </div>
                 <div class="modal-body">
-                    <p>Коллекция <strong>@_collectionToDelete.Name</strong> будет удалена.</p>
+                    <p>The collection <strong>@_collectionToDelete.Name</strong> will be deleted.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelDelete">Отмена</button>
-                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Удалить</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
                 </div>
             </div>
         </div>

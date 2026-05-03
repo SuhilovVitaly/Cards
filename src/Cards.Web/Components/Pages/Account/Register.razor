@@ -7,29 +7,29 @@
 @inject IUserService UserService
 @inject NavigationManager Navigation
 
-<PageTitle>Регистрация</PageTitle>
+<PageTitle>Sign up</PageTitle>
 
 <div class="auth-page">
     <div class="auth-card">
-        <h1 class="mb-4">Регистрация</h1>
+        <h1 class="mb-4">Sign up</h1>
 
         <EditForm Model="Input" OnValidSubmit="HandleRegister" FormName="register" method="post">
             <DataAnnotationsValidator />
 
             <div class="mb-3">
-                <label class="form-label" for="username">Имя пользователя</label>
+                <label class="form-label" for="username">Username</label>
                 <InputText id="username" class="form-control" @bind-Value="Input.Username" autocomplete="username" />
                 <ValidationMessage For="@(() => Input.Username)" />
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="password">Пароль</label>
+                <label class="form-label" for="password">Password</label>
                 <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" autocomplete="new-password" />
                 <ValidationMessage For="@(() => Input.Password)" />
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="password-confirm">Повторите пароль</label>
+                <label class="form-label" for="password-confirm">Confirm password</label>
                 <InputText id="password-confirm" type="password" class="form-control" @bind-Value="Input.ConfirmPassword" autocomplete="new-password" />
                 <ValidationMessage For="@(() => Input.ConfirmPassword)" />
             </div>
@@ -39,12 +39,12 @@
                 <div class="alert alert-danger">@_errorMessage</div>
             }
 
-            <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+            <button type="submit" class="btn btn-primary w-100">Sign up</button>
         </EditForm>
 
         <div class="mt-3 text-center">
-            <span class="text-muted">Уже есть аккаунт?</span>
-            <a href="@($"login?returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}")">Войти</a>
+            <span class="text-muted">Already have an account?</span>
+            <a href="@($"login?returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}")">Sign in</a>
         </div>
     </div>
 </div>
@@ -91,21 +91,21 @@
 
     public class RegisterInput : IValidatableObject
     {
-        [Required(ErrorMessage = "Введите имя пользователя")]
-        [StringLength(50, MinimumLength = 3, ErrorMessage = "От 3 до 50 символов")]
+        [Required(ErrorMessage = "Enter a username")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Between 3 and 50 characters")]
         public string Username { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Введите пароль")]
-        [StringLength(100, MinimumLength = 6, ErrorMessage = "Минимум 6 символов")]
+        [Required(ErrorMessage = "Enter a password")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Minimum 6 characters")]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Подтвердите пароль")]
+        [Required(ErrorMessage = "Confirm your password")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (Password != ConfirmPassword)
-                yield return new ValidationResult("Пароли не совпадают", new[] { nameof(ConfirmPassword) });
+                yield return new ValidationResult("Passwords do not match", new[] { nameof(ConfirmPassword) });
         }
     }
 }

@@ -4,9 +4,9 @@ public static class LanguageHelper
 {
     public static string GetDisplayName(Language language) => language switch
     {
-        Language.En => "Английский",
-        Language.He => "Иврит",
-        Language.Ru => "Русский",
+        Language.En => "English",
+        Language.He => "Hebrew",
+        Language.Ru => "Russian",
         _ => language.ToString()
     };
 

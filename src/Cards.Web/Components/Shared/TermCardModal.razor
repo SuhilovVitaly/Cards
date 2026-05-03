@@ -6,7 +6,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Новая карточка</h5>
+                <h5 class="modal-title">New card</h5>
                 <button type="button" class="btn-close" @onclick="OnClose"></button>
             </div>
             <div class="modal-body">
@@ -18,7 +18,7 @@
                             <div class="input-group">
                                 <input type="text" id="text1" class="form-control"
                                        dir="@LanguageHelper.GetTextDirection(Language1)"
-                                       placeholder="@($"Текст ({LanguageHelper.GetDisplayName(Language1)})")"
+                                       placeholder="@($"Text ({LanguageHelper.GetDisplayName(Language1)})")"
                                        maxlength="50"
                                        value="@_text1"
                                        @oninput="e => _text1 = e.Value?.ToString() ?? string.Empty" />
@@ -26,11 +26,11 @@
                                         class="btn btn-outline-secondary"
                                         disabled="@string.IsNullOrWhiteSpace(_text1)"
                                         @onclick="() => SpeakAsync(_text1, Language1)"
-                                        title="Воспроизвести">🔊</button>
+                                        title="Play">🔊</button>
                             </div>
                             @if (_text1.Length > 50)
                             {
-                                <div class="text-danger small mt-1">Максимум 50 символов</div>
+                                <div class="text-danger small mt-1">Maximum 50 characters</div>
                             }
                         </div>
 
@@ -47,7 +47,7 @@
                             else
                             {
                                 <div class="image-placeholder" id="paste-zone-1">
-                                    <span class="text-muted">Нет изображения</span>
+                                    <span class="text-muted">No image</span>
                                 </div>
                             }
                             <InputFile id="image-upload-1"
@@ -64,7 +64,7 @@
                             <div class="input-group">
                                 <input type="text" id="text2" class="form-control"
                                        dir="@LanguageHelper.GetTextDirection(Language2)"
-                                       placeholder="@($"Текст ({LanguageHelper.GetDisplayName(Language2)})")"
+                                       placeholder="@($"Text ({LanguageHelper.GetDisplayName(Language2)})")"
                                        maxlength="50"
                                        value="@_text2"
                                        @oninput="e => _text2 = e.Value?.ToString() ?? string.Empty" />
@@ -72,11 +72,11 @@
                                         class="btn btn-outline-secondary"
                                         disabled="@string.IsNullOrWhiteSpace(_text2)"
                                         @onclick="() => SpeakAsync(_text2, Language2)"
-                                        title="Воспроизвести">🔊</button>
+                                        title="Play">🔊</button>
                             </div>
                             @if (_text2.Length > 50)
                             {
-                                <div class="text-danger small mt-1">Максимум 50 символов</div>
+                                <div class="text-danger small mt-1">Maximum 50 characters</div>
                             }
                         </div>
 
@@ -93,7 +93,7 @@
                             else
                             {
                                 <div class="image-placeholder" id="paste-zone-2">
-                                    <span class="text-muted">Нет изображения</span>
+                                    <span class="text-muted">No image</span>
                                 </div>
                             }
                             <InputFile id="image-upload-2"
@@ -105,11 +105,11 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" @onclick="OnClose">Отмена</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="OnClose">Cancel</button>
                 <button type="button" class="btn btn-primary" @onclick="HandleSave"
-                        disabled="@(!IsValid)">Сохранить</button>
+                        disabled="@(!IsValid)">Save</button>
                 <button type="button" class="btn btn-outline-primary" @onclick="HandleSaveAndContinue"
-                        disabled="@(!IsValid)">Сохранить и продолжить</button>
+                        disabled="@(!IsValid)">Save and continue</button>
             </div>
         </div>
     </div>
