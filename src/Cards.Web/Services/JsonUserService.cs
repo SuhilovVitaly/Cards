@@ -16,8 +16,7 @@ public class JsonUserService : IUserService
 
     public JsonUserService(IWebHostEnvironment environment)
     {
-        _dataDirectory = Path.Combine(environment.ContentRootPath, "Data", "users");
-        Directory.CreateDirectory(_dataDirectory);
+        _dataDirectory = DataPathHelper.PrepareEntityPath(environment, "users");
     }
 
     public async Task<User?> FindByUsernameAsync(string username, CancellationToken ct = default)

@@ -18,8 +18,7 @@ public class JsonTermCardService : ITermCardService
 
     public JsonTermCardService(IWebHostEnvironment environment)
     {
-        _dataDirectory = Path.Combine(environment.ContentRootPath, "Data", "cards");
-        Directory.CreateDirectory(_dataDirectory);
+        _dataDirectory = DataPathHelper.PrepareEntityPath(environment, "cards");
     }
 
     public async Task<TermCard?> GetByIdAsync(Guid id, CancellationToken ct = default)

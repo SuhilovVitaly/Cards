@@ -18,8 +18,7 @@ public class JsonCollectionService : ICollectionService
 
     public JsonCollectionService(IWebHostEnvironment environment)
     {
-        _dataDirectory = Path.Combine(environment.ContentRootPath, "Data", "collections");
-        Directory.CreateDirectory(_dataDirectory);
+        _dataDirectory = DataPathHelper.PrepareEntityPath(environment, "collections");
     }
 
     public async Task<IReadOnlyList<Collection>> GetAllAsync(string userId, CancellationToken ct = default)
