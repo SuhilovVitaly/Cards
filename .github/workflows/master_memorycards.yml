@@ -27,7 +27,7 @@ jobs:
         run: dotnet build Cards.sln --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish Cards.sln -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+        run: dotnet publish src/Cards.Web/Cards.Web.csproj -c Release -o "${{env.DOTNET_ROOT}}/myapp"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v5
