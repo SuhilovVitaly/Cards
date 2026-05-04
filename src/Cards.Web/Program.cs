@@ -24,11 +24,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization(options =>
 {
-    // Require authenticated user by default for the whole app
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-
+    // Anonymous browsing is allowed by default. Pages that require authentication
+    // must opt in with the [Authorize] attribute.
     options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
 });
 

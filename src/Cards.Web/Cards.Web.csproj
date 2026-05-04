@@ -4,7 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.0.0</Version>
+    <!-- Major and minor are bumped manually; patch is auto-derived from the git commit count -->
+    <VersionMajor>1</VersionMajor>
+    <VersionMinor>0</VersionMinor>
+    <!-- Default patch when git is unavailable (e.g. shallow clone or no .git folder) -->
+    <VersionPatch>0</VersionPatch>
     <!-- Captured at MSBuild evaluation time so each build embeds a fresh UTC timestamp -->
     <BuildDateUtc>$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"))</BuildDateUtc>
   </PropertyGroup>
@@ -13,6 +17,23 @@
   <ItemGroup>
     <AssemblyMetadata Include="BuildDateUtc" Value="$(BuildDateUtc)" />
   </ItemGroup>
+
+  <!-- Compute patch version from the total number of commits reachable from HEAD.
+       This makes every new commit produce a new build version automatically. -->
+  <Target Name="SetVersionPatchFromGit" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">
+    <Exec Command="git rev-list --count HEAD"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitCount" />
+      <Output TaskParameter="ExitCode" PropertyName="GitCountExitCode" />
+    </Exec>
+    <PropertyGroup>
+      <VersionPatch Condition=" '$(GitCountExitCode)' == '0' AND '$(GitCommitCount)' != '' ">$(GitCommitCount)</VersionPatch>
+      <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)</Version>
+    </PropertyGroup>
+  </Target>
 
   <!-- Resolve short git commit hash and embed it into AssemblyInformationalVersion -->
   <Target Name="SetGitCommitHash" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">

@@ -42,6 +42,26 @@ public class JsonCollectionService : ICollectionService
         }
     }
 
+    public async Task<IReadOnlyList<Collection>> GetAllAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var collections = new List<Collection>();
+            foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
+            {
+                var item = await ReadFromFileAsync(file, ct);
+                if (item is not null)
+                    collections.Add(item);
+            }
+            return collections.OrderByDescending(c => c.ModifiedAt).ToList();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<Collection?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);

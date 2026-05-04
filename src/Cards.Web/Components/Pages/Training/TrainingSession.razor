@@ -1,5 +1,7 @@
 @page "/training/{CollectionId:guid}"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
 @inject ICollectionService CollectionService
 @inject ITermCardService TermCardService
 @inject NavigationManager Navigation
@@ -50,12 +52,15 @@ else if (_currentCard is not null)
             </div>
 
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAddCard">
-                    + Card
-                </button>
-                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="AskDeleteCard">
-                    Delete card
-                </button>
+                @if (_isOwner)
+                {
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAddCard">
+                        + Card
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="AskDeleteCard">
+                        Delete card
+                    </button>
+                }
             </div>
         </div>
 
@@ -151,6 +156,7 @@ else if (_currentCard is not null)
     private bool _showAddCard;
     private bool _showDeleteConfirm;
     private bool _needsAutoPlay;
+    private bool _isOwner;
 
     protected override async Task OnInitializedAsync()
     {
@@ -158,12 +164,15 @@ else if (_currentCard is not null)
         _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
         _collection = await CollectionService.GetByIdAsync(CollectionId);
-        // Prevent access to collections that don't belong to the current user
-        if (_collection is null || _collection.UserId != _userId || _collection.CardIds.Count == 0)
+        // Anyone can train any collection. Block access only if the collection
+        // does not exist or has no cards
+        if (_collection is null || _collection.CardIds.Count == 0)
         {
             Navigation.NavigateTo("");
             return;
         }
+
+        _isOwner = !string.IsNullOrEmpty(_userId) && _collection.UserId == _userId;
 
         _selectedLanguage = _collection.Language1;
         await StartSession();
@@ -274,11 +283,17 @@ else if (_currentCard is not null)
             : _currentCard.Value2;
     }
 
-    private void OpenAddCard() => _showAddCard = true;
+    private void OpenAddCard()
+    {
+        if (!_isOwner) return;
+        _showAddCard = true;
+    }
+
     private void CloseAddCard() => _showAddCard = false;
 
     private async Task HandleCardSaved(TermCard card)
     {
+        if (!_isOwner) return;
         if (_collection is not null)
             await CollectionService.AddCardAsync(_collection.Id, card.Id);
         _showAddCard = false;
@@ -286,12 +301,14 @@ else if (_currentCard is not null)
 
     private async Task HandleCardSavedAndContinue(TermCard card)
     {
+        if (!_isOwner) return;
         if (_collection is not null)
             await CollectionService.AddCardAsync(_collection.Id, card.Id);
     }
 
     private void AskDeleteCard()
     {
+        if (!_isOwner) return;
         if (_currentCard is null) return;
         _showDeleteConfirm = true;
     }
@@ -300,6 +317,12 @@ else if (_currentCard is not null)
 
     private async Task ConfirmDeleteCard()
     {
+        if (!_isOwner)
+        {
+            _showDeleteConfirm = false;
+            return;
+        }
+
         if (_collection is null || _currentCard is null)
         {
             _showDeleteConfirm = false;

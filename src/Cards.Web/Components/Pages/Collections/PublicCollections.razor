@@ -1,0 +1,104 @@
+@page "/public"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@inject ICollectionService CollectionService
+@inject IUserService UserService
+
+<PageTitle>Public collections</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Public collections</h1>
+</div>
+
+@if (_collections is null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (_collections.Count == 0)
+{
+    <div class="alert alert-info">
+        There are no public collections yet.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Owner</th>
+                    <th>Cards</th>
+                    <th>Created</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var col in _collections)
+                {
+                    <tr>
+                        <td>
+                            <strong>@col.Name</strong>
+                            <br />
+                            <small class="text-muted">
+                                @LanguageHelper.GetPairDisplayName(col.Language1, col.Language2)
+                            </small>
+                        </td>
+                        <td>
+                            <span class="text-muted">@GetOwnerName(col.UserId)</span>
+                        </td>
+                        <td>@col.CardIds.Count</td>
+                        <td>@col.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                @if (col.CardIds.Count > 0)
+                                {
+                                    <a class="btn btn-sm btn-success"
+                                       href="@($"training/{col.Id}")">
+                                        Train
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-success" disabled>
+                                        Train
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private string _userId = string.Empty;
+    private List<Collection>? _collections;
+    private Dictionary<string, string> _ownerNames = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateTask;
+        _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        var result = await CollectionService.GetAllAsync();
+        _collections = string.IsNullOrEmpty(_userId)
+            ? result.ToList()
+            : result.Where(c => c.UserId != _userId).ToList();
+
+        var users = await UserService.GetAllAsync();
+        _ownerNames = users.ToDictionary(u => u.Id.ToString(), u => u.Username);
+    }
+
+    private string GetOwnerName(string userId)
+    {
+        if (string.IsNullOrEmpty(userId)) return "—";
+        return _ownerNames.TryGetValue(userId, out var name) ? name : "—";
+    }
+}

@@ -6,6 +6,8 @@ public interface ICollectionService
 {
     Task<IReadOnlyList<Collection>> GetAllAsync(string userId, CancellationToken ct = default);
 
+    Task<IReadOnlyList<Collection>> GetAllAsync(CancellationToken ct = default);
+
     Task<Collection?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     Task<Collection> CreateAsync(string userId, string name, Language lang1, Language lang2, CancellationToken ct = default);
