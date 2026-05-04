@@ -21,4 +21,6 @@ public interface ITermCardService
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 
     Task<int> GetTotalCountAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<TermCard>> GetAllByUserAsync(string userId, CancellationToken ct = default);
 }

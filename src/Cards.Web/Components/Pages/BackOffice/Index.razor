@@ -1,0 +1,13 @@
+@page "/backoffice"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>BackOffice</PageTitle>
+
+<h1 class="mb-4">BackOffice</h1>
+
+<div class="list-group">
+    <a class="list-group-item list-group-item-action" href="backoffice/users">
+        Users
+    </a>
+</div>

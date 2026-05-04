@@ -5,6 +5,7 @@
 @using Microsoft.AspNetCore.Authentication.Cookies
 @using Microsoft.AspNetCore.Authorization
 @inject IUserService UserService
+@inject IAdminService AdminService
 @inject NavigationManager Navigation
 
 <PageTitle>Sign in</PageTitle>
@@ -69,6 +70,12 @@
             new(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(System.Security.Claims.ClaimTypes.Name, user.Username)
         };
+
+        if (AdminService.IsAdmin(user.Username))
+            claims.Add(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Admin"));
+
+        if (user.IsPremium)
+            claims.Add(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Premium"));
 
         var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new System.Security.Claims.ClaimsPrincipal(identity);

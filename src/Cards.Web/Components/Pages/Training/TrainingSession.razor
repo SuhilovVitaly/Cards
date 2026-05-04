@@ -49,9 +49,14 @@ else if (_currentCard is not null)
                 </span>
             </div>
 
-            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAddCard">
-                + Card
-            </button>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAddCard">
+                    + Card
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="AskDeleteCard">
+                    Delete card
+                </button>
+            </div>
         </div>
 
         @{
@@ -107,6 +112,26 @@ else if (_currentCard is not null)
         OnClose="CloseAddCard" />
 }
 
+@if (_showDeleteConfirm && _currentCard is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete card?</h5>
+                </div>
+                <div class="modal-body">
+                    <p>The card will be removed from this collection.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelDeleteCard">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteCard">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public Guid CollectionId { get; set; }
 
@@ -124,6 +149,7 @@ else if (_currentCard is not null)
     private int _total;
     private bool _sessionActive;
     private bool _showAddCard;
+    private bool _showDeleteConfirm;
     private bool _needsAutoPlay;
 
     protected override async Task OnInitializedAsync()
@@ -262,6 +288,47 @@ else if (_currentCard is not null)
     {
         if (_collection is not null)
             await CollectionService.AddCardAsync(_collection.Id, card.Id);
+    }
+
+    private void AskDeleteCard()
+    {
+        if (_currentCard is null) return;
+        _showDeleteConfirm = true;
+    }
+
+    private void CancelDeleteCard() => _showDeleteConfirm = false;
+
+    private async Task ConfirmDeleteCard()
+    {
+        if (_collection is null || _currentCard is null)
+        {
+            _showDeleteConfirm = false;
+            return;
+        }
+
+        var deletedCardId = _currentCard.Id;
+        await CollectionService.RemoveCardAsync(_collection.Id, deletedCardId);
+
+        // Drop any future occurrences of the deleted card from the queue
+        // (it might have been re-enqueued by "Don't remember")
+        _queue = new Queue<TermCard>(_queue.Where(c => c.Id != deletedCardId));
+
+        _total = Math.Max(0, _total - 1);
+        _showDeleteConfirm = false;
+
+        await JS.InvokeVoidAsync("cardsApp.stopSpeaking");
+
+        AdvanceToNext();
+
+        if (_sessionActive)
+        {
+            await SpeakCurrentCardAsync();
+        }
+        else
+        {
+            // No cards left in the collection — return to collections list
+            Navigation.NavigateTo("");
+        }
     }
 
     private static List<T> Shuffle<T>(List<T> list)

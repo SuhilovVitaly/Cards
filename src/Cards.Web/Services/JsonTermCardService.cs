@@ -126,6 +126,26 @@ public class JsonTermCardService : ITermCardService
         }
     }
 
+    public async Task<IReadOnlyList<TermCard>> GetAllByUserAsync(string userId, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var cards = new List<TermCard>();
+            foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
+            {
+                var card = await ReadFromFileAsync(file, ct);
+                if (card is not null && string.Equals(card.UserId, userId, StringComparison.Ordinal))
+                    cards.Add(card);
+            }
+            return cards;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private string GetFilePath(Guid id) => Path.Combine(_dataDirectory, $"{id}.json");
 
     private async Task<TermCard?> ReadAsync(Guid id, CancellationToken ct)

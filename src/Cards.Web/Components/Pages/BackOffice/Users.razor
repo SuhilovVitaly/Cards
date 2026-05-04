@@ -1,0 +1,245 @@
+@page "/backoffice/users"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@inject IUserService UserService
+@inject ICollectionService CollectionService
+@inject ITermCardService TermCardService
+@inject IAdminService AdminService
+
+<PageTitle>BackOffice — Users</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Users</h1>
+    <a class="btn btn-outline-secondary" href="backoffice">Back</a>
+</div>
+
+@if (_users is null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (_users.Count == 0)
+{
+    <div class="alert alert-info">No users.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Created</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in _users)
+                {
+                    var isAdmin = AdminService.IsAdmin(user.Username);
+                    var isSelf = user.Id == _currentUserId;
+                    var canDelete = !isSelf && !isAdmin;
+                    var roleLabel = isAdmin ? "Admin" : (user.IsPremium ? "Premium" : "User");
+                    <tr>
+                        <td>
+                            <strong>@user.Username</strong>
+                            @if (isSelf)
+                            {
+                                <span class="badge bg-secondary ms-2">you</span>
+                            }
+                        </td>
+                        <td>@roleLabel</td>
+                        <td>@user.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                @if (!isAdmin)
+                                {
+                                    @if (user.IsPremium)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary"
+                                                disabled="@(_busyUserId == user.Id)"
+                                                @onclick="() => TogglePremium(user, false)">
+                                            Revoke premium
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-warning"
+                                                disabled="@(_busyUserId == user.Id)"
+                                                @onclick="() => TogglePremium(user, true)">
+                                            Make premium
+                                        </button>
+                                    }
+                                }
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        disabled="@(!canDelete)"
+                                        title="@(isSelf ? "You cannot delete yourself" : isAdmin ? "Admins cannot be deleted" : "Delete user")"
+                                        @onclick="() => AskDelete(user)">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+
+@if (_userToDelete is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete user?</h5>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        User <strong>@_userToDelete.Username</strong> will be deleted along with
+                        <strong>@_pendingCollectionsCount</strong> collection(s) and
+                        <strong>@_pendingCardsCount</strong> card(s).
+                    </p>
+                    <p class="text-danger mb-0">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary"
+                            disabled="@_isDeleting"
+                            @onclick="CancelDelete">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-danger"
+                            disabled="@_isDeleting"
+                            @onclick="ConfirmDelete">
+                        @(_isDeleting ? "Deleting..." : "Delete")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private List<User>? _users;
+    private Guid _currentUserId;
+    private User? _userToDelete;
+    private int _pendingCollectionsCount;
+    private int _pendingCardsCount;
+    private bool _isDeleting;
+    private string? _errorMessage;
+    private Guid? _busyUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateTask;
+        var idClaim = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        _ = Guid.TryParse(idClaim, out _currentUserId);
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await UserService.GetAllAsync();
+        _users = result.ToList();
+    }
+
+    private async Task TogglePremium(User user, bool makePremium)
+    {
+        _errorMessage = null;
+
+        // Defense-in-depth: admins are not togglable
+        if (AdminService.IsAdmin(user.Username))
+        {
+            _errorMessage = "Admin role cannot be changed here.";
+            return;
+        }
+
+        _busyUserId = user.Id;
+        try
+        {
+            await UserService.SetPremiumAsync(user.Id, makePremium);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to update premium status: {ex.Message}";
+        }
+        finally
+        {
+            _busyUserId = null;
+        }
+    }
+
+    private async Task AskDelete(User user)
+    {
+        _errorMessage = null;
+        _userToDelete = user;
+
+        var collections = await CollectionService.GetAllAsync(user.Id.ToString());
+        var cards = await TermCardService.GetAllByUserAsync(user.Id.ToString());
+        _pendingCollectionsCount = collections.Count;
+        _pendingCardsCount = cards.Count;
+    }
+
+    private void CancelDelete()
+    {
+        _userToDelete = null;
+        _pendingCollectionsCount = 0;
+        _pendingCardsCount = 0;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_userToDelete is null) return;
+
+        // Defense-in-depth: re-check the rules even if the button shouldn't have been clickable
+        if (_userToDelete.Id == _currentUserId || AdminService.IsAdmin(_userToDelete.Username))
+        {
+            _errorMessage = "This user cannot be deleted.";
+            _userToDelete = null;
+            return;
+        }
+
+        _isDeleting = true;
+        try
+        {
+            var userIdString = _userToDelete.Id.ToString();
+
+            var collections = await CollectionService.GetAllAsync(userIdString);
+            foreach (var collection in collections)
+                await CollectionService.DeleteAsync(collection.Id);
+
+            var cards = await TermCardService.GetAllByUserAsync(userIdString);
+            foreach (var card in cards)
+                await TermCardService.DeleteAsync(card.Id);
+
+            await UserService.DeleteAsync(_userToDelete.Id);
+
+            _userToDelete = null;
+            _pendingCollectionsCount = 0;
+            _pendingCardsCount = 0;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to delete user: {ex.Message}";
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+}

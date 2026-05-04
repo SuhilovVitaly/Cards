@@ -90,6 +90,65 @@ public class JsonUserService : IUserService
         }
     }
 
+    public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var users = new List<User>();
+            foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
+            {
+                var user = await ReadFromFileAsync(file, ct);
+                if (user is not null)
+                    users.Add(user);
+            }
+            return users.OrderBy(u => u.CreatedAt).ToList();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var path = Path.Combine(_dataDirectory, $"{id}.json");
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task SetPremiumAsync(Guid id, bool isPremium, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var path = Path.Combine(_dataDirectory, $"{id}.json");
+            if (!File.Exists(path))
+                throw new InvalidOperationException($"User '{id}' not found.");
+
+            var user = await ReadFromFileAsync(path, ct)
+                ?? throw new InvalidOperationException($"User '{id}' could not be read.");
+
+            if (user.IsPremium == isPremium)
+                return;
+
+            user.IsPremium = isPremium;
+            await WriteAsync(user, ct);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task<User?> FindByUsernameInternalAsync(string username, CancellationToken ct)
     {
         var trimmed = username.Trim();

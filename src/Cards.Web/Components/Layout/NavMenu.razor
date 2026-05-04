@@ -46,34 +46,51 @@
             </NotAuthorized>
         </AuthorizeView>
 
-        <div class="app-stats px-3">
-            <div class="app-stats-row">
-                <span class="app-stats-label">Users</span>
-                <span class="app-stats-value">@_userCount</span>
-            </div>
-            <div class="app-stats-row">
-                <span class="app-stats-label">Collections</span>
-                <span class="app-stats-value">@_collectionCount</span>
-            </div>
-            <div class="app-stats-row">
-                <span class="app-stats-label">Cards</span>
-                <span class="app-stats-value">@_cardCount</span>
-            </div>
-            <div class="app-stats-row">
-                <span class="app-stats-label">Version</span>
-                <span class="app-stats-value">
-                    @AppInfo.Version@(string.IsNullOrEmpty(AppInfo.GitCommit) ? string.Empty : $" ({AppInfo.GitCommit})")
-                </span>
-            </div>
-            <div class="app-stats-row">
-                <span class="app-stats-label">Last update</span>
-                <span class="app-stats-value">@_buildDateText</span>
-            </div>
-        </div>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="backoffice">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> BackOffice
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="app-stats px-3">
+                    <div class="app-stats-row">
+                        <span class="app-stats-label">Users</span>
+                        <span class="app-stats-value">@_userCount</span>
+                    </div>
+                    <div class="app-stats-row">
+                        <span class="app-stats-label">Collections</span>
+                        <span class="app-stats-value">@_collectionCount</span>
+                    </div>
+                    <div class="app-stats-row">
+                        <span class="app-stats-label">Cards</span>
+                        <span class="app-stats-value">@_cardCount</span>
+                    </div>
+                    <div class="app-stats-row">
+                        <span class="app-stats-label">Version</span>
+                        <span class="app-stats-value">
+                            @AppInfo.Version@(string.IsNullOrEmpty(AppInfo.GitCommit) ? string.Empty : $" ({AppInfo.GitCommit})")
+                        </span>
+                    </div>
+                    <div class="app-stats-row">
+                        <span class="app-stats-label">Last update</span>
+                        <span class="app-stats-value">@_buildDateText</span>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
     private int _userCount;
     private int _collectionCount;
     private int _cardCount;
@@ -81,6 +98,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Only admins see and load the stats block
+        if (AuthState is null) return;
+
+        var state = await AuthState;
+        if (!state.User.IsInRole("Admin")) return;
+
         _userCount = await UserService.GetTotalCountAsync();
         _collectionCount = await CollectionService.GetTotalCountAsync();
         _cardCount = await TermCardService.GetTotalCountAsync();

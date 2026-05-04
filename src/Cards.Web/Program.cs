@@ -28,15 +28,20 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
 });
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection("Admin"));
+
 builder.Services.AddSingleton<IUserService, JsonUserService>();
 builder.Services.AddSingleton<ICollectionService, JsonCollectionService>();
 builder.Services.AddSingleton<ITermCardService, JsonTermCardService>();
 builder.Services.AddSingleton<IAppInfoService, AppInfoService>();
+builder.Services.AddSingleton<IAdminService, AdminService>();
 
 builder.Services.AddHttpClient<ITranslationService, GoogleTranslationService>(client =>
 {
