@@ -366,3 +366,5 @@ src/Cards.Web/Data/*.json
 
 /src/Cards.Web/Data/cards
 /src/Cards.Web/Data/collections/6f39dcf5-897b-445b-a869-26275b3ebab9.json
+*.json
+/src/Cards.Web/Data/users/8cef0482-7da1-4221-8636-c3a54fb6a52b.json
