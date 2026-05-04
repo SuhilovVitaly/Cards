@@ -36,6 +36,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IUserService, JsonUserService>();
 builder.Services.AddSingleton<ICollectionService, JsonCollectionService>();
 builder.Services.AddSingleton<ITermCardService, JsonTermCardService>();
+builder.Services.AddSingleton<IAppInfoService, AppInfoService>();
 
 builder.Services.AddHttpClient<ITranslationService, GoogleTranslationService>(client =>
 {

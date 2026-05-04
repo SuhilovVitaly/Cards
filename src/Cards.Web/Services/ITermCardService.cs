@@ -19,4 +19,6 @@ public interface ITermCardService
         CancellationToken ct = default);
 
     Task DeleteAsync(Guid id, CancellationToken ct = default);
+
+    Task<int> GetTotalCountAsync(CancellationToken ct = default);
 }

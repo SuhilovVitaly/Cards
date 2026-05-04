@@ -77,6 +77,19 @@ public class JsonUserService : IUserService
         }
     }
 
+    public async Task<int> GetTotalCountAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            return Directory.EnumerateFiles(_dataDirectory, "*.json").Count();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task<User?> FindByUsernameInternalAsync(string username, CancellationToken ct)
     {
         var trimmed = username.Trim();

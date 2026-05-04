@@ -134,6 +134,19 @@ public class JsonCollectionService : ICollectionService
         }
     }
 
+    public async Task<int> GetTotalCountAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            return Directory.EnumerateFiles(_dataDirectory, "*.json").Count();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private string GetFilePath(Guid id) => Path.Combine(_dataDirectory, $"{id}.json");
 
     private async Task<Collection?> ReadAsync(Guid id, CancellationToken ct)

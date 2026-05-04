@@ -4,6 +4,29 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.0.0</Version>
+    <!-- Captured at MSBuild evaluation time so each build embeds a fresh UTC timestamp -->
+    <BuildDateUtc>$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"))</BuildDateUtc>
   </PropertyGroup>
+
+  <!-- Embed UTC build date as assembly metadata so it can be read at runtime -->
+  <ItemGroup>
+    <AssemblyMetadata Include="BuildDateUtc" Value="$(BuildDateUtc)" />
+  </ItemGroup>
+
+  <!-- Resolve short git commit hash and embed it into AssemblyInformationalVersion -->
+  <Target Name="SetGitCommitHash" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">
+    <Exec Command="git rev-parse --short HEAD"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitHash" />
+      <Output TaskParameter="ExitCode" PropertyName="GitExitCode" />
+    </Exec>
+    <PropertyGroup>
+      <SourceRevisionId Condition=" '$(GitExitCode)' == '0' ">$(GitCommitHash)</SourceRevisionId>
+    </PropertyGroup>
+  </Target>
 
 </Project>

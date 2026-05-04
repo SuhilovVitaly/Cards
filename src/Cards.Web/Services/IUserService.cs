@@ -9,4 +9,6 @@ public interface IUserService
     Task<User> RegisterAsync(string username, string password, CancellationToken ct = default);
 
     Task<User?> AuthenticateAsync(string username, string password, CancellationToken ct = default);
+
+    Task<int> GetTotalCountAsync(CancellationToken ct = default);
 }

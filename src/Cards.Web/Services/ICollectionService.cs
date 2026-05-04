@@ -15,4 +15,6 @@ public interface ICollectionService
     Task AddCardAsync(Guid collectionId, Guid cardId, CancellationToken ct = default);
 
     Task RemoveCardAsync(Guid collectionId, Guid cardId, CancellationToken ct = default);
+
+    Task<int> GetTotalCountAsync(CancellationToken ct = default);
 }
