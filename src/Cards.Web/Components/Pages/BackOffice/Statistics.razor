@@ -1,0 +1,187 @@
+@page "/backoffice/statistics"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@inject IUserService UserService
+@inject ICollectionService CollectionService
+@inject ITermCardService TermCardService
+@inject IAppInfoService AppInfo
+
+<PageTitle>BackOffice — Statistics</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Statistics</h1>
+    <a class="btn btn-outline-secondary" href="backoffice">Back</a>
+</div>
+
+@if (_loaded)
+{
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-4">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="text-muted text-uppercase small">Users</div>
+                    <div class="display-5 fw-bold">@_userCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="text-muted text-uppercase small">Collections</div>
+                    <div class="display-5 fw-bold">@_collectionCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="text-muted text-uppercase small">Cards</div>
+                    <div class="display-5 fw-bold">@_cardCount</div>
+                    <div class="text-muted small mt-1">
+                        Linked: <strong>@_linkedCardCount</strong> ·
+                        Orphans: <strong>@_orphanCardIds.Count</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h5>Maintenance</h5>
+        <p class="text-muted small">
+            Orphan cards are card files that are no longer referenced by any collection.
+            They appear when a card is removed from its last collection or when the owning
+            collection is deleted.
+        </p>
+        <button type="button" class="btn btn-warning"
+                disabled="@(_orphanCardIds.Count == 0 || _isCleaning)"
+                @onclick="AskCleanup">
+            @(_orphanCardIds.Count == 0 ? "No orphan cards" : $"Cleanup orphan cards ({_orphanCardIds.Count})")
+        </button>
+    </div>
+
+    <div class="mt-4">
+        <h5>Build info</h5>
+        <dl class="row mb-0">
+            <dt class="col-sm-3 col-md-2 text-muted">Version</dt>
+            <dd class="col-sm-9 col-md-10">@AppInfo.Version</dd>
+            <dt class="col-sm-3 col-md-2 text-muted">Last update</dt>
+            <dd class="col-sm-9 col-md-10">@_buildDateText</dd>
+        </dl>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger mt-3">@_errorMessage</div>
+}
+
+@if (_showCleanupConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cleanup orphan cards?</h5>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        <strong>@_orphanCardIds.Count</strong> orphan card file(s) will be
+                        permanently deleted from disk.
+                    </p>
+                    <p class="text-danger mb-0">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary"
+                            disabled="@_isCleaning"
+                            @onclick="CancelCleanup">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-danger"
+                            disabled="@_isCleaning"
+                            @onclick="ConfirmCleanup">
+                        @(_isCleaning ? "Deleting..." : "Delete")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loaded;
+    private int _userCount;
+    private int _collectionCount;
+    private int _cardCount;
+    private int _linkedCardCount;
+    private List<Guid> _orphanCardIds = new();
+    private string _buildDateText = "—";
+
+    private bool _showCleanupConfirm;
+    private bool _isCleaning;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _buildDateText = AppInfo.BuildDateUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—";
+        _loaded = true;
+    }
+
+    private async Task LoadAsync()
+    {
+        _userCount = await UserService.GetTotalCountAsync();
+
+        var collections = await CollectionService.GetAllAsync();
+        _collectionCount = collections.Count;
+
+        var aliveCardIds = collections.SelectMany(c => c.CardIds).ToHashSet();
+        _linkedCardCount = aliveCardIds.Count;
+
+        var allCardIds = await TermCardService.GetAllIdsAsync();
+        _cardCount = allCardIds.Count;
+        _orphanCardIds = allCardIds.Where(id => !aliveCardIds.Contains(id)).ToList();
+    }
+
+    private void AskCleanup()
+    {
+        _errorMessage = null;
+        if (_orphanCardIds.Count == 0) return;
+        _showCleanupConfirm = true;
+    }
+
+    private void CancelCleanup() => _showCleanupConfirm = false;
+
+    private async Task ConfirmCleanup()
+    {
+        if (_orphanCardIds.Count == 0)
+        {
+            _showCleanupConfirm = false;
+            return;
+        }
+
+        _isCleaning = true;
+        try
+        {
+            foreach (var id in _orphanCardIds)
+            {
+                await TermCardService.DeleteAsync(id);
+            }
+            _showCleanupConfirm = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to cleanup orphan cards: {ex.Message}";
+        }
+        finally
+        {
+            _isCleaning = false;
+        }
+    }
+}

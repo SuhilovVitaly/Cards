@@ -34,28 +34,6 @@
                                 <div class="text-danger small mt-1">Maximum 50 characters</div>
                             }
                         </div>
-
-                        <div class="mb-2">
-                            @if (!string.IsNullOrEmpty(_image1DataUrl))
-                            {
-                                <div class="position-relative d-inline-block">
-                                    <img src="@_image1DataUrl" class="img-thumbnail" style="max-height:120px;" alt="" />
-                                    <button type="button"
-                                            class="btn btn-sm btn-danger position-absolute top-0 end-0"
-                                            @onclick="() => _image1DataUrl = null">✕</button>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="image-placeholder" id="paste-zone-1">
-                                    <span class="text-muted">No image</span>
-                                </div>
-                            }
-                            <InputFile id="image-upload-1"
-                                       class="form-control form-control-sm mt-1"
-                                       accept="image/*"
-                                       OnChange="HandleImage1Upload" />
-                        </div>
                     </div>
 
                     <div class="col-md-6 mb-3">
@@ -80,29 +58,30 @@
                                 <div class="text-danger small mt-1">Maximum 50 characters</div>
                             }
                         </div>
-
-                        <div class="mb-2">
-                            @if (!string.IsNullOrEmpty(_image2DataUrl))
-                            {
-                                <div class="position-relative d-inline-block">
-                                    <img src="@_image2DataUrl" class="img-thumbnail" style="max-height:120px;" alt="" />
-                                    <button type="button"
-                                            class="btn btn-sm btn-danger position-absolute top-0 end-0"
-                                            @onclick="() => _image2DataUrl = null">✕</button>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="image-placeholder" id="paste-zone-2">
-                                    <span class="text-muted">No image</span>
-                                </div>
-                            }
-                            <InputFile id="image-upload-2"
-                                       class="form-control form-control-sm mt-1"
-                                       accept="image/*"
-                                       OnChange="HandleImage2Upload" />
-                        </div>
                     </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold">Image</label>
+                    @if (!string.IsNullOrEmpty(_imageDataUrl))
+                    {
+                        <div class="position-relative d-inline-block">
+                            <img src="@_imageDataUrl" class="img-thumbnail" style="max-height:160px;" alt="" />
+                            <button type="button"
+                                    class="btn btn-sm btn-danger position-absolute top-0 end-0"
+                                    @onclick="() => _imageDataUrl = null">✕</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="image-placeholder" id="paste-zone">
+                            <span class="text-muted">No image</span>
+                        </div>
+                    }
+                    <InputFile id="image-upload"
+                               class="form-control form-control-sm mt-1"
+                               accept="image/*"
+                               OnChange="HandleImageUpload" />
                 </div>
             </div>
             <div class="modal-footer">
@@ -128,8 +107,7 @@
 
     private string _text1 = string.Empty;
     private string _text2 = string.Empty;
-    private string? _image1DataUrl;
-    private string? _image2DataUrl;
+    private string? _imageDataUrl;
     private DotNetObjectReference<TermCardModal>? _dotNetRef;
 
     // Tracks the last value we auto-filled into each field, so we can update it
@@ -153,16 +131,13 @@
     }
 
     [JSInvokable]
-    public void OnImagePasted(int slot, string dataUrl)
+    public void OnImagePasted(string dataUrl)
     {
-        if (slot == 1)
-            _image1DataUrl = dataUrl;
-        else
-            _image2DataUrl = dataUrl;
+        _imageDataUrl = dataUrl;
         InvokeAsync(StateHasChanged);
     }
 
-    private async Task HandleImageUpload(InputFileChangeEventArgs e, int slot)
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
     {
         var file = e.File;
         if (file is null || !file.ContentType.StartsWith("image/")) return;
@@ -172,14 +147,8 @@
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
         var base64 = Convert.ToBase64String(ms.ToArray());
-        var dataUrl = $"data:{file.ContentType};base64,{base64}";
-
-        if (slot == 1) _image1DataUrl = dataUrl;
-        else _image2DataUrl = dataUrl;
+        _imageDataUrl = $"data:{file.ContentType};base64,{base64}";
     }
-
-    private Task HandleImage1Upload(InputFileChangeEventArgs e) => HandleImageUpload(e, 1);
-    private Task HandleImage2Upload(InputFileChangeEventArgs e) => HandleImageUpload(e, 2);
 
     private async Task SpeakAsync(string text, Language language)
     {
@@ -274,7 +243,7 @@
             UserId,
             Language1, Language2,
             _text1, _text2,
-            _image1DataUrl, _image2DataUrl);
+            _imageDataUrl);
     }
 
     private void ResetForm()
@@ -282,8 +251,7 @@
         _debounceCts?.Cancel();
         _text1 = string.Empty;
         _text2 = string.Empty;
-        _image1DataUrl = null;
-        _image2DataUrl = null;
+        _imageDataUrl = null;
         _lastAutoText1 = string.Empty;
         _lastAutoText2 = string.Empty;
     }

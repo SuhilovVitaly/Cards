@@ -2,14 +2,6 @@ window.cardsApp = {
     _pasteHandler: null,
 
     initPasteHandlers: function (dotNetRef) {
-        let activeSlot = 1;
-
-        const el1 = document.getElementById('text1');
-        const el2 = document.getElementById('text2');
-
-        if (el1) el1.addEventListener('focus', () => activeSlot = 1);
-        if (el2) el2.addEventListener('focus', () => activeSlot = 2);
-
         window.cardsApp._pasteHandler = async (e) => {
             const items = e.clipboardData?.items;
             if (!items) return;
@@ -20,7 +12,7 @@ window.cardsApp = {
                     const blob = item.getAsFile();
                     const reader = new FileReader();
                     reader.onload = () => {
-                        dotNetRef.invokeMethodAsync('OnImagePasted', activeSlot, reader.result);
+                        dotNetRef.invokeMethodAsync('OnImagePasted', reader.result);
                     };
                     reader.readAsDataURL(blob);
                     return;

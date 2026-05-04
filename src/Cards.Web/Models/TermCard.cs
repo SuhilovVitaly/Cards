@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Cards.Web.Models;
 
 public class TermCard
@@ -17,4 +19,11 @@ public class TermCard
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Single image for the card. New cards write the picture into <see cref="Value1"/>.
+    /// Falls back to <see cref="Value2"/> for legacy cards that stored it on the second value.
+    /// </summary>
+    [JsonIgnore]
+    public string? ImageDataUrl => Value1.ImageDataUrl ?? Value2.ImageDataUrl;
 }

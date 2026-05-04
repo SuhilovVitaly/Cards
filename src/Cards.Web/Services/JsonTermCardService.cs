@@ -60,12 +60,12 @@ public class JsonTermCardService : ITermCardService
         Language lang2,
         string text1,
         string text2,
-        string? image1DataUrl,
-        string? image2DataUrl,
+        string? imageDataUrl,
         CancellationToken ct = default)
     {
         var (l1, l2) = LanguageHelper.NormalizePair(lang1, lang2);
 
+        // Card-level image is stored on Value1; Value2 keeps no image
         var card = new TermCard
         {
             UserId = userId,
@@ -74,13 +74,12 @@ public class JsonTermCardService : ITermCardService
             Value1 = new TermValue
             {
                 Text = text1.Trim(),
-                ImageDataUrl = image1DataUrl,
+                ImageDataUrl = imageDataUrl,
                 AudioStatus = AudioStatus.Pending
             },
             Value2 = new TermValue
             {
                 Text = text2.Trim(),
-                ImageDataUrl = image2DataUrl,
                 AudioStatus = AudioStatus.Pending
             }
         };
@@ -138,6 +137,26 @@ public class JsonTermCardService : ITermCardService
                     cards.Add(card);
             }
             return cards;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetAllIdsAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var ids = new List<Guid>();
+            foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                if (Guid.TryParse(name, out var id))
+                    ids.Add(id);
+            }
+            return ids;
         }
         finally
         {

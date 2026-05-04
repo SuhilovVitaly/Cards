@@ -14,8 +14,7 @@ public interface ITermCardService
         Language lang2,
         string text1,
         string text2,
-        string? image1DataUrl,
-        string? image2DataUrl,
+        string? imageDataUrl,
         CancellationToken ct = default);
 
     Task DeleteAsync(Guid id, CancellationToken ct = default);
@@ -23,4 +22,6 @@ public interface ITermCardService
     Task<int> GetTotalCountAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<TermCard>> GetAllByUserAsync(string userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<Guid>> GetAllIdsAsync(CancellationToken ct = default);
 }

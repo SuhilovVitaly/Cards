@@ -71,9 +71,9 @@ else if (_currentCard is not null)
 
         <div class="training-card">
             <div class="training-card-image">
-                @if (!string.IsNullOrEmpty(currentValue.ImageDataUrl))
+                @if (!string.IsNullOrEmpty(_currentCard.ImageDataUrl))
                 {
-                    <img src="@currentValue.ImageDataUrl" alt="" />
+                    <img src="@_currentCard.ImageDataUrl" alt="" />
                 }
             </div>
             <div class="training-card-text" dir="@LanguageHelper.GetTextDirection(currentLang)">
@@ -90,16 +90,16 @@ else if (_currentCard is not null)
             @if (!_answered)
             {
                 <button type="button" class="btn btn-danger btn-lg" @onclick="HandleDontRemember">
-                    Don't remember
+                    Show translation
                 </button>
                 <button type="button" class="btn btn-success btn-lg" @onclick="HandleRemember">
-                    Remember
+                    Next
                 </button>
             }
             else
             {
-                <button type="button" class="btn btn-primary btn-lg" @onclick="HandleNext">
-                    Next
+                <button type="button" class="btn btn-primary btn-lg" @onclick="HandleBackToSource">
+                    Back
                 </button>
             }
         </div>
@@ -157,6 +157,10 @@ else if (_currentCard is not null)
     private bool _showDeleteConfirm;
     private bool _needsAutoPlay;
     private bool _isOwner;
+    // Tracks card ids for which a failure has already been counted in this session.
+    // Each card contributes at most one to the incorrect counter, and once it is
+    // here, a subsequent "Next" stops contributing to the correct counter.
+    private readonly HashSet<Guid> _failedCardIds = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -199,28 +203,37 @@ else if (_currentCard is not null)
         _correct = 0;
         _incorrect = 0;
         _answered = false;
+        _failedCardIds.Clear();
         _sessionActive = _queue.Count > 0;
         _currentCard = _queue.Count > 0 ? _queue.Dequeue() : null;
     }
 
     private async Task HandleRemember()
     {
-        _correct++;
-        _answered = true;
+        // Cards that have already been peeked do not contribute to the correct counter
+        if (_currentCard is not null && !_failedCardIds.Contains(_currentCard.Id))
+        {
+            _correct++;
+        }
+        AdvanceToNext();
         await SpeakCurrentCardAsync();
     }
 
     private async Task HandleDontRemember()
     {
-        _incorrect++;
+        // Count the failure only the first time a given card is peeked
+        if (_currentCard is not null && _failedCardIds.Add(_currentCard.Id))
+        {
+            _incorrect++;
+        }
         _answered = true;
-        _queue.Enqueue(_currentCard!);
         await SpeakCurrentCardAsync();
     }
 
-    private async Task HandleNext()
+    private async Task HandleBackToSource()
     {
-        AdvanceToNext();
+        // Flip the same card back to the originally selected language without advancing
+        _answered = false;
         await SpeakCurrentCardAsync();
     }
 
@@ -332,8 +345,7 @@ else if (_currentCard is not null)
         var deletedCardId = _currentCard.Id;
         await CollectionService.RemoveCardAsync(_collection.Id, deletedCardId);
 
-        // Drop any future occurrences of the deleted card from the queue
-        // (it might have been re-enqueued by "Don't remember")
+        // Drop any future occurrences of the deleted card from the queue (defensive)
         _queue = new Queue<TermCard>(_queue.Where(c => c.Id != deletedCardId));
 
         _total = Math.Max(0, _total - 1);
