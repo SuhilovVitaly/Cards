@@ -364,3 +364,5 @@ FodyWeavers.xsd
 # Cards app runtime data
 src/Cards.Web/Data/*.json
 
+/src/Cards.Web/Data/cards
+/src/Cards.Web/Data/collections/6f39dcf5-897b-445b-a869-26275b3ebab9.json
