@@ -24,14 +24,26 @@
                                        value="@_text1"
                                        @oninput="OnText1Input" />
                                 <button type="button"
+                                        class="@MicButtonClass"
+                                        @onclick="ToggleRecordingAsync"
+                                        title="@MicButtonTitle">@MicButtonIcon</button>
+                                <button type="button"
                                         class="btn btn-outline-secondary"
-                                        disabled="@string.IsNullOrWhiteSpace(_text1)"
-                                        @onclick="() => SpeakAsync(_text1, Language1)"
+                                        disabled="@(string.IsNullOrWhiteSpace(_text1) && string.IsNullOrEmpty(_audio1DataUrl))"
+                                        @onclick="SpeakValue1Async"
                                         title="Play">🔊</button>
                             </div>
                             @if (_text1.Length > 50)
                             {
                                 <div class="text-danger small mt-1">Maximum 50 characters</div>
+                            }
+                            @if (_isRecording)
+                            {
+                                <div class="text-danger small mt-1">@_recordSeconds/@MaxRecordSeconds s</div>
+                            }
+                            @if (!string.IsNullOrEmpty(_recordError))
+                            {
+                                <div class="text-danger small mt-1">@_recordError</div>
                             }
                         </div>
                     </div>
@@ -104,11 +116,27 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private const int TranslationDebounceMs = 700;
+    private const int MaxRecordSeconds = 10;
 
     private string _text1 = string.Empty;
     private string _text2 = string.Empty;
     private string? _imageDataUrl;
+    private string? _audio1DataUrl;
+    private bool _isRecording;
+    private int _recordSeconds;
+    private string? _recordError;
+    private CancellationTokenSource? _recordTickerCts;
     private DotNetObjectReference<TermCardModal>? _dotNetRef;
+
+    private string MicButtonClass => _isRecording
+        ? "btn btn-danger"
+        : (!string.IsNullOrEmpty(_audio1DataUrl) ? "btn btn-success" : "btn btn-outline-secondary");
+
+    private string MicButtonIcon => _isRecording ? "⏺" : "🎤";
+
+    private string MicButtonTitle => _isRecording
+        ? "Stop recording"
+        : (!string.IsNullOrEmpty(_audio1DataUrl) ? "Re-record audio" : "Record audio");
 
     // Tracks the last value we auto-filled into each field, so we can update it
     // again on subsequent edits, but never overwrite text the user typed manually.
@@ -154,6 +182,95 @@
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         await JS.InvokeVoidAsync("cardsApp.speakText", text, LanguageHelper.GetSpeechCode(language));
+    }
+
+    private async Task SpeakValue1Async()
+    {
+        if (!string.IsNullOrEmpty(_audio1DataUrl))
+        {
+            await JS.InvokeVoidAsync("cardsApp.playRecording", _audio1DataUrl);
+            return;
+        }
+        await SpeakAsync(_text1, Language1);
+    }
+
+    private async Task ToggleRecordingAsync()
+    {
+        if (_isRecording)
+        {
+            await JS.InvokeVoidAsync("cardsApp.stopRecording");
+            return;
+        }
+
+        _recordError = null;
+        _recordSeconds = 0;
+        _isRecording = true;
+        StateHasChanged();
+
+        StartRecordTicker();
+
+        var started = await JS.InvokeAsync<bool>(
+            "cardsApp.startRecording",
+            _dotNetRef,
+            nameof(OnRecordingComplete),
+            MaxRecordSeconds,
+            nameof(OnRecordingError));
+
+        if (!started)
+        {
+            // Error callback already fired and reset state
+            return;
+        }
+    }
+
+    private void StartRecordTicker()
+    {
+        StopRecordTicker();
+        _recordTickerCts = new CancellationTokenSource();
+        var token = _recordTickerCts.Token;
+        _ = RunRecordTickerAsync(token);
+    }
+
+    private async Task RunRecordTickerAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested && _recordSeconds < MaxRecordSeconds)
+            {
+                await Task.Delay(1000, ct);
+                if (ct.IsCancellationRequested) return;
+                _recordSeconds++;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void StopRecordTicker()
+    {
+        _recordTickerCts?.Cancel();
+        _recordTickerCts?.Dispose();
+        _recordTickerCts = null;
+    }
+
+    [JSInvokable]
+    public Task OnRecordingComplete(string? dataUrl)
+    {
+        _audio1DataUrl = string.IsNullOrEmpty(dataUrl) ? _audio1DataUrl : dataUrl;
+        _isRecording = false;
+        _recordSeconds = 0;
+        StopRecordTicker();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnRecordingError(string message)
+    {
+        _recordError = string.IsNullOrWhiteSpace(message) ? "Microphone unavailable" : message;
+        _isRecording = false;
+        _recordSeconds = 0;
+        StopRecordTicker();
+        return InvokeAsync(StateHasChanged);
     }
 
     private void OnText1Input(ChangeEventArgs e)
@@ -243,7 +360,8 @@
             UserId,
             Language1, Language2,
             _text1, _text2,
-            _imageDataUrl);
+            _imageDataUrl,
+            _audio1DataUrl);
     }
 
     private void ResetForm()
@@ -252,6 +370,11 @@
         _text1 = string.Empty;
         _text2 = string.Empty;
         _imageDataUrl = null;
+        _audio1DataUrl = null;
+        _isRecording = false;
+        _recordSeconds = 0;
+        _recordError = null;
+        StopRecordTicker();
         _lastAutoText1 = string.Empty;
         _lastAutoText2 = string.Empty;
     }
@@ -260,8 +383,13 @@
     {
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
+        StopRecordTicker();
         try
         {
+            if (_isRecording)
+            {
+                await JS.InvokeVoidAsync("cardsApp.stopRecording");
+            }
             await JS.InvokeVoidAsync("cardsApp.disposePasteHandlers");
         }
         catch (JSDisconnectedException) { }

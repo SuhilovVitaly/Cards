@@ -20,7 +20,7 @@
     </div>
 
     <div class="mb-3">
-        <label class="form-label" for="lang1">Language 1</label>
+        <label class="form-label" for="lang1">Learning language</label>
         <InputSelect id="lang1" class="form-select" @bind-Value="_model.Language1">
             @foreach (var lang in Enum.GetValues<Language>())
             {
@@ -30,7 +30,7 @@
     </div>
 
     <div class="mb-3">
-        <label class="form-label" for="lang2">Language 2</label>
+        <label class="form-label" for="lang2">Native language</label>
         <InputSelect id="lang2" class="form-select" @bind-Value="_model.Language2">
             @foreach (var lang in Enum.GetValues<Language>())
             {

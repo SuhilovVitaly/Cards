@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddHubOptions(o => o.MaximumReceiveMessageSize = 512 * 1024);
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -57,6 +58,48 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Serve recorded audio files from the writable data directory.
+// The file is only returned when:
+//   1) the requested name has the form "{guid}.webm" (no traversal, no other extensions);
+//   2) a card with that id exists and one of its values references exactly this file
+//      via AudioPath — so files left on disk but not registered are never exposed;
+//   3) the resolved physical path is still inside the audio directory.
+app.MapGet("/audio/{fileName}", async (string fileName, IWebHostEnvironment env, ITermCardService cardService, CancellationToken ct) =>
+{
+    var safeName = Path.GetFileName(fileName);
+    if (!string.Equals(safeName, fileName, StringComparison.Ordinal))
+        return Results.BadRequest();
+
+    var nameWithoutExt = Path.GetFileNameWithoutExtension(safeName);
+    var ext = Path.GetExtension(safeName);
+    if (!string.Equals(ext, ".webm", StringComparison.OrdinalIgnoreCase) ||
+        !Guid.TryParse(nameWithoutExt, out var cardId))
+    {
+        return Results.BadRequest();
+    }
+
+    var card = await cardService.GetByIdAsync(cardId, ct);
+    if (card is null) return Results.NotFound();
+
+    var expectedPath = $"/audio/{safeName}";
+    if (!string.Equals(card.Value1.AudioPath, expectedPath, StringComparison.Ordinal) &&
+        !string.Equals(card.Value2.AudioPath, expectedPath, StringComparison.Ordinal))
+    {
+        return Results.NotFound();
+    }
+
+    var dir = DataPathHelper.PrepareEntityPath(env, "audio");
+    var fullDir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir));
+    var fullPath = Path.GetFullPath(Path.Combine(fullDir, safeName));
+    var parentDir = Path.TrimEndingDirectorySeparator(Path.GetDirectoryName(fullPath) ?? string.Empty);
+    if (!string.Equals(parentDir, fullDir, StringComparison.OrdinalIgnoreCase))
+        return Results.BadRequest();
+
+    if (!File.Exists(fullPath)) return Results.NotFound();
+
+    return Results.File(fullPath, "audio/webm");
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
