@@ -8,7 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
-    .AddHubOptions(o => o.MaximumReceiveMessageSize = 512 * 1024);
+    // Audio recordings and pasted images are streamed back from the browser to .NET
+    // as base64 data URLs via JS interop (SignalR). The default 32 KB cap (and the
+    // previous 512 KB) is easily exceeded by a few seconds of audio or a pasted image,
+    // which silently aborts the circuit and freezes the modal on production.
+    .AddHubOptions(o => o.MaximumReceiveMessageSize = 10 * 1024 * 1024);
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
