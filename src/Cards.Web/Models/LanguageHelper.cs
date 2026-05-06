@@ -21,9 +21,6 @@ public static class LanguageHelper
     public static string GetTextDirection(Language language) =>
         language == Language.He ? "rtl" : "ltr";
 
-    public static (Language Lang1, Language Lang2) NormalizePair(Language a, Language b) =>
-        a <= b ? (a, b) : (b, a);
-
     public static string GetPairDisplayName(Language lang1, Language lang2) =>
         $"{GetDisplayName(lang1)} — {GetDisplayName(lang2)}";
 
