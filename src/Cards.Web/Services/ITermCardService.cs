@@ -15,6 +15,7 @@ public interface ITermCardService
         string text1,
         string text2,
         string? imageDataUrl,
+        string? audio2Base64 = null,
         CancellationToken ct = default);
 
     Task DeleteAsync(Guid id, CancellationToken ct = default);

@@ -7,6 +7,7 @@ namespace Cards.Web.Services;
 public class JsonTermCardService : ITermCardService
 {
     private readonly string _dataDirectory;
+    private readonly string _audioDirectory;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private readonly JsonSerializerOptions _jsonOptions = new()
@@ -19,6 +20,7 @@ public class JsonTermCardService : ITermCardService
     public JsonTermCardService(IWebHostEnvironment environment)
     {
         _dataDirectory = DataPathHelper.PrepareEntityPath(environment, "cards");
+        _audioDirectory = DataPathHelper.PrepareEntityPath(environment, "audio");
     }
 
     public async Task<TermCard?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -61,6 +63,7 @@ public class JsonTermCardService : ITermCardService
         string text1,
         string text2,
         string? imageDataUrl,
+        string? audio2Base64 = null,
         CancellationToken ct = default)
     {
         var (l1, l2) = LanguageHelper.NormalizePair(lang1, lang2);
@@ -84,6 +87,15 @@ public class JsonTermCardService : ITermCardService
             }
         };
 
+        var audioBytes = TryDecodeAudioDataUrl(audio2Base64);
+        if (audioBytes is not null)
+        {
+            var audioPath = Path.Combine(_audioDirectory, $"{card.Id}.webm");
+            await File.WriteAllBytesAsync(audioPath, audioBytes, ct);
+            card.Value2.AudioPath = $"/audio/{card.Id}.webm";
+            card.Value2.AudioStatus = AudioStatus.Generated;
+        }
+
         await _gate.WaitAsync(ct);
         try
         {
@@ -96,6 +108,30 @@ public class JsonTermCardService : ITermCardService
         return card;
     }
 
+    private static byte[]? TryDecodeAudioDataUrl(string? dataUrl)
+    {
+        if (string.IsNullOrWhiteSpace(dataUrl)) return null;
+
+        const string prefix = "data:";
+        if (!dataUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return null;
+
+        var commaIndex = dataUrl.IndexOf(',');
+        if (commaIndex < 0) return null;
+
+        var meta = dataUrl.Substring(prefix.Length, commaIndex - prefix.Length);
+        if (!meta.Contains("base64", StringComparison.OrdinalIgnoreCase)) return null;
+
+        var payload = dataUrl[(commaIndex + 1)..];
+        try
+        {
+            return Convert.FromBase64String(payload);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
@@ -104,6 +140,10 @@ public class JsonTermCardService : ITermCardService
             var path = GetFilePath(id);
             if (File.Exists(path))
                 File.Delete(path);
+
+            var audioPath = Path.Combine(_audioDirectory, $"{id}.webm");
+            if (File.Exists(audioPath))
+                File.Delete(audioPath);
         }
         finally
         {

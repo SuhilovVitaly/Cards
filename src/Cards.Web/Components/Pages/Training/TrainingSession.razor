@@ -272,7 +272,14 @@ else if (_currentCard is not null)
         if (_currentCard is null || _collection is null) return;
         var value = GetCurrentValue();
         var lang = GetCurrentLanguage();
-        await JS.InvokeVoidAsync("cardsApp.speakText", value.Text, LanguageHelper.GetSpeechCode(lang));
+        if (!string.IsNullOrEmpty(value.AudioPath))
+        {
+            await JS.InvokeVoidAsync("cardsApp.playRecording", value.AudioPath);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("cardsApp.speakText", value.Text, LanguageHelper.GetSpeechCode(lang));
+        }
     }
 
     private Language GetCurrentLanguage()

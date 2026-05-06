@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddHubOptions(o => o.MaximumReceiveMessageSize = 512 * 1024);
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -57,6 +58,19 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Serve recorded audio files from the writable data directory
+app.MapGet("/audio/{fileName}", (string fileName, IWebHostEnvironment env) =>
+{
+    if (fileName.Contains("..") || fileName.Contains('/') || fileName.Contains('\\'))
+        return Results.BadRequest();
+
+    var dir = DataPathHelper.PrepareEntityPath(env, "audio");
+    var path = Path.Combine(dir, fileName);
+    if (!File.Exists(path)) return Results.NotFound();
+
+    return Results.File(path, "audio/webm");
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
