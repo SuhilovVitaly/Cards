@@ -127,6 +127,11 @@
     private string? _recordError;
     private CancellationTokenSource? _recordTickerCts;
     private DotNetObjectReference<TermCardModal>? _dotNetRef;
+    // Signals that the in-flight recording has been finalized by the browser
+    // (either OnRecordingComplete or OnRecordingError fired). Used by Save/Save and
+    // continue to wait for the audio bytes before persisting the card.
+    private TaskCompletionSource? _recordStopTcs;
+    private const int RecordStopTimeoutMs = 5000;
 
     private string MicButtonClass => _isRecording
         ? "btn btn-danger"
@@ -260,6 +265,7 @@
         _isRecording = false;
         _recordSeconds = 0;
         StopRecordTicker();
+        _recordStopTcs?.TrySetResult();
         return InvokeAsync(StateHasChanged);
     }
 
@@ -270,7 +276,29 @@
         _isRecording = false;
         _recordSeconds = 0;
         StopRecordTicker();
+        _recordStopTcs?.TrySetResult();
         return InvokeAsync(StateHasChanged);
+    }
+
+    // Stops the in-flight recording and waits for OnRecordingComplete (or OnRecordingError)
+    // to fire so the audio data URL is populated before the caller proceeds.
+    private async Task EnsureRecordingStoppedAsync()
+    {
+        if (!_isRecording) return;
+
+        _recordStopTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            await JS.InvokeVoidAsync("cardsApp.stopRecording");
+        }
+        catch (JSDisconnectedException)
+        {
+            return;
+        }
+
+        // Bound the wait so a stuck MediaRecorder cannot hang the Save action.
+        await Task.WhenAny(_recordStopTcs.Task, Task.Delay(RecordStopTimeoutMs));
+        _recordStopTcs = null;
     }
 
     private void OnText1Input(ChangeEventArgs e)
@@ -341,6 +369,7 @@
     private async Task HandleSave()
     {
         if (!IsValid) return;
+        await EnsureRecordingStoppedAsync();
         var card = await CreateCardAsync();
         await OnSave.InvokeAsync(card);
     }
@@ -348,6 +377,7 @@
     private async Task HandleSaveAndContinue()
     {
         if (!IsValid) return;
+        await EnsureRecordingStoppedAsync();
         var card = await CreateCardAsync();
         ResetForm();
         await OnSaveAndContinue.InvokeAsync(card);
