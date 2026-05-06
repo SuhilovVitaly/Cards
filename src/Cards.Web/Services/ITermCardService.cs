@@ -18,6 +18,14 @@ public interface ITermCardService
         string? audio1Base64 = null,
         CancellationToken ct = default);
 
+    Task<TermCard?> UpdateAsync(
+        Guid id,
+        string text1,
+        string text2,
+        string? imageDataUrl,
+        string? audio1Source,
+        CancellationToken ct = default);
+
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 
     Task<int> GetTotalCountAsync(CancellationToken ct = default);

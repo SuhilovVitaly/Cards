@@ -57,6 +57,10 @@ else if (_currentCard is not null)
                     <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAddCard">
                         + Card
                     </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OpenEditCard"
+                            disabled="@(_currentCard is null)">
+                        Edit card
+                    </button>
                     <button type="button" class="btn btn-outline-danger btn-sm" @onclick="AskDeleteCard">
                         Delete card
                     </button>
@@ -117,6 +121,17 @@ else if (_currentCard is not null)
         OnClose="CloseAddCard" />
 }
 
+@if (_editCard is not null && _collection is not null)
+{
+    <TermCardModal
+        UserId="_userId"
+        Language1="_collection.Language1"
+        Language2="_collection.Language2"
+        ExistingCard="_editCard"
+        OnSave="HandleCardEdited"
+        OnClose="CloseEditCard" />
+}
+
 @if (_showDeleteConfirm && _currentCard is not null)
 {
     <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
@@ -154,6 +169,7 @@ else if (_currentCard is not null)
     private int _total;
     private bool _sessionActive;
     private bool _showAddCard;
+    private TermCard? _editCard;
     private bool _showDeleteConfirm;
     private bool _needsAutoPlay;
     private bool _isOwner;
@@ -324,6 +340,36 @@ else if (_currentCard is not null)
         if (!_isOwner) return;
         if (_collection is not null)
             await CollectionService.AddCardAsync(_collection.Id, card.Id);
+    }
+
+    private void OpenEditCard()
+    {
+        if (!_isOwner) return;
+        if (_currentCard is null) return;
+        _editCard = _currentCard;
+    }
+
+    private void CloseEditCard() => _editCard = null;
+
+    private async Task HandleCardEdited(TermCard card)
+    {
+        if (!_isOwner)
+        {
+            _editCard = null;
+            return;
+        }
+
+        // Replace the card we currently show and any pending occurrences in the queue
+        if (_currentCard is not null && _currentCard.Id == card.Id)
+        {
+            _currentCard = card;
+        }
+        _queue = new Queue<TermCard>(_queue.Select(c => c.Id == card.Id ? card : c));
+
+        _editCard = null;
+
+        await JS.InvokeVoidAsync("cardsApp.stopSpeaking");
+        await SpeakCurrentCardAsync();
     }
 
     private void AskDeleteCard()

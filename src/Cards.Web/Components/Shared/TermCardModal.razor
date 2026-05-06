@@ -7,7 +7,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">New card</h5>
+                <h5 class="modal-title">@(IsEditMode ? "Edit card" : "New card")</h5>
                 <button type="button" class="btn-close" @onclick="OnClose"></button>
             </div>
             <div class="modal-body">
@@ -100,8 +100,11 @@
                 <button type="button" class="btn btn-outline-secondary" @onclick="OnClose">Cancel</button>
                 <button type="button" class="btn btn-primary" @onclick="HandleSave"
                         disabled="@(!IsValid)">Save</button>
-                <button type="button" class="btn btn-outline-primary" @onclick="HandleSaveAndContinue"
-                        disabled="@(!IsValid)">Save and continue</button>
+                @if (!IsEditMode)
+                {
+                    <button type="button" class="btn btn-outline-primary" @onclick="HandleSaveAndContinue"
+                            disabled="@(!IsValid)">Save and continue</button>
+                }
             </div>
         </div>
     </div>
@@ -111,9 +114,14 @@
     [Parameter, EditorRequired] public string UserId { get; set; } = string.Empty;
     [Parameter, EditorRequired] public Language Language1 { get; set; }
     [Parameter, EditorRequired] public Language Language2 { get; set; }
+    [Parameter] public TermCard? ExistingCard { get; set; }
     [Parameter] public EventCallback<TermCard> OnSave { get; set; }
     [Parameter] public EventCallback<TermCard> OnSaveAndContinue { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool IsEditMode => ExistingCard is not null;
+    // Tracks the card we last initialized fields from, so we re-populate only when the card actually changes
+    private Guid? _initializedCardId;
 
     private const int TranslationDebounceMs = 700;
     private const int MaxRecordSeconds = 10;
@@ -152,6 +160,19 @@
     private bool IsValid =>
         !string.IsNullOrWhiteSpace(_text1) && _text1.Length <= 50 &&
         !string.IsNullOrWhiteSpace(_text2) && _text2.Length <= 50;
+
+    protected override void OnParametersSet()
+    {
+        if (ExistingCard is not null && _initializedCardId != ExistingCard.Id)
+        {
+            _text1 = ExistingCard.Value1.Text;
+            _text2 = ExistingCard.Value2.Text;
+            _imageDataUrl = ExistingCard.ImageDataUrl;
+            // Existing audio is referenced by its file path; a re-recording will replace it with a data: URL
+            _audio1DataUrl = ExistingCard.Value1.AudioPath;
+            _initializedCardId = ExistingCard.Id;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -370,22 +391,33 @@
     {
         if (!IsValid) return;
         await EnsureRecordingStoppedAsync();
-        var card = await CreateCardAsync();
+        var card = await PersistCardAsync();
+        if (card is null) return;
         await OnSave.InvokeAsync(card);
     }
 
     private async Task HandleSaveAndContinue()
     {
-        if (!IsValid) return;
+        if (!IsValid || IsEditMode) return;
         await EnsureRecordingStoppedAsync();
-        var card = await CreateCardAsync();
+        var card = await PersistCardAsync();
+        if (card is null) return;
         ResetForm();
         await OnSaveAndContinue.InvokeAsync(card);
         await JS.InvokeVoidAsync("cardsApp.focusElement", "text1");
     }
 
-    private async Task<TermCard> CreateCardAsync()
+    private async Task<TermCard?> PersistCardAsync()
     {
+        if (IsEditMode && ExistingCard is not null)
+        {
+            return await TermCardService.UpdateAsync(
+                ExistingCard.Id,
+                _text1, _text2,
+                _imageDataUrl,
+                _audio1DataUrl);
+        }
+
         return await TermCardService.CreateAsync(
             UserId,
             Language1, Language2,

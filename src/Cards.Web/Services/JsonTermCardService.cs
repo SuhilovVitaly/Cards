@@ -131,6 +131,49 @@ public class JsonTermCardService : ITermCardService
         }
     }
 
+    public async Task<TermCard?> UpdateAsync(
+        Guid id,
+        string text1,
+        string text2,
+        string? imageDataUrl,
+        string? audio1Source,
+        CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var card = await ReadAsync(id, ct);
+            if (card is null) return null;
+
+            card.Value1.Text = text1.Trim();
+            card.Value2.Text = text2.Trim();
+
+            // Image lives on Value1 by current convention; clear any legacy copy on Value2
+            card.Value1.ImageDataUrl = imageDataUrl;
+            card.Value2.ImageDataUrl = null;
+
+            // audio1Source can be: null/empty (no audio), an existing path like "/audio/{id}.webm" (keep as is),
+            // or a new "data:audio/...;base64,..." payload from a re-recording (overwrite the file).
+            var audioBytes = TryDecodeAudioDataUrl(audio1Source);
+            if (audioBytes is not null)
+            {
+                var audioPath = Path.Combine(_audioDirectory, $"{card.Id}.webm");
+                await File.WriteAllBytesAsync(audioPath, audioBytes, ct);
+                card.Value1.AudioPath = $"/audio/{card.Id}.webm";
+                card.Value1.AudioStatus = AudioStatus.Generated;
+            }
+
+            card.ModifiedAt = DateTime.UtcNow;
+
+            await WriteAsync(card, ct);
+            return card;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
