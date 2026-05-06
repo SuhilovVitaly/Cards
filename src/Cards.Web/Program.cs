@@ -7,13 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents(o =>
-    {
-        // Temporary: surface the real server-side exception text in the browser
-        // console so we can diagnose the audio-recording freeze on production.
-        // Revert once the root cause is fixed.
-        o.DetailedErrors = true;
-    })
+    .AddInteractiveServerComponents()
     // Audio recordings and pasted images are streamed back from the browser to .NET
     // as base64 data URLs via JS interop (SignalR). The default 32 KB cap (and the
     // previous 512 KB) is easily exceeded by a few seconds of audio or a pasted image,
