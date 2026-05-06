@@ -76,13 +76,12 @@ public class JsonCollectionService : ICollectionService
 
     public async Task<Collection> CreateAsync(string userId, string name, Language lang1, Language lang2, CancellationToken ct = default)
     {
-        var (l1, l2) = LanguageHelper.NormalizePair(lang1, lang2);
         var collection = new Collection
         {
             UserId = userId,
             Name = name.Trim(),
-            Language1 = l1,
-            Language2 = l2
+            Language1 = lang1,
+            Language2 = lang2
         };
 
         await _gate.WaitAsync(ct);

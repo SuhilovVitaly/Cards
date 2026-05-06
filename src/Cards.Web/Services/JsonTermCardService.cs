@@ -63,17 +63,16 @@ public class JsonTermCardService : ITermCardService
         string text1,
         string text2,
         string? imageDataUrl,
-        string? audio2Base64 = null,
+        string? audio1Base64 = null,
         CancellationToken ct = default)
     {
-        var (l1, l2) = LanguageHelper.NormalizePair(lang1, lang2);
-
-        // Card-level image is stored on Value1; Value2 keeps no image
+        // Card-level image and recorded audio are stored on Value1 (learning language).
+        // Value2 (native language) keeps no image and no recording.
         var card = new TermCard
         {
             UserId = userId,
-            Language1 = l1,
-            Language2 = l2,
+            Language1 = lang1,
+            Language2 = lang2,
             Value1 = new TermValue
             {
                 Text = text1.Trim(),
@@ -87,13 +86,13 @@ public class JsonTermCardService : ITermCardService
             }
         };
 
-        var audioBytes = TryDecodeAudioDataUrl(audio2Base64);
+        var audioBytes = TryDecodeAudioDataUrl(audio1Base64);
         if (audioBytes is not null)
         {
             var audioPath = Path.Combine(_audioDirectory, $"{card.Id}.webm");
             await File.WriteAllBytesAsync(audioPath, audioBytes, ct);
-            card.Value2.AudioPath = $"/audio/{card.Id}.webm";
-            card.Value2.AudioStatus = AudioStatus.Generated;
+            card.Value1.AudioPath = $"/audio/{card.Id}.webm";
+            card.Value1.AudioStatus = AudioStatus.Generated;
         }
 
         await _gate.WaitAsync(ct);

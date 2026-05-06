@@ -30,6 +30,8 @@ else
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Learning language</th>
+                    <th>Native language</th>
                     <th>Cards</th>
                     <th>Created</th>
                     <th class="text-end">Actions</th>
@@ -46,6 +48,8 @@ else
                                 @LanguageHelper.GetPairDisplayName(col.Language1, col.Language2)
                             </small>
                         </td>
+                        <td>@LanguageHelper.GetDisplayName(col.Language1)</td>
+                        <td>@LanguageHelper.GetDisplayName(col.Language2)</td>
                         <td>@col.CardIds.Count</td>
                         <td>@col.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</td>
                         <td class="text-end">

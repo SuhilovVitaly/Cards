@@ -24,14 +24,26 @@
                                        value="@_text1"
                                        @oninput="OnText1Input" />
                                 <button type="button"
+                                        class="@MicButtonClass"
+                                        @onclick="ToggleRecordingAsync"
+                                        title="@MicButtonTitle">@MicButtonIcon</button>
+                                <button type="button"
                                         class="btn btn-outline-secondary"
-                                        disabled="@string.IsNullOrWhiteSpace(_text1)"
-                                        @onclick="() => SpeakAsync(_text1, Language1)"
+                                        disabled="@(string.IsNullOrWhiteSpace(_text1) && string.IsNullOrEmpty(_audio1DataUrl))"
+                                        @onclick="SpeakValue1Async"
                                         title="Play">🔊</button>
                             </div>
                             @if (_text1.Length > 50)
                             {
                                 <div class="text-danger small mt-1">Maximum 50 characters</div>
+                            }
+                            @if (_isRecording)
+                            {
+                                <div class="text-danger small mt-1">@_recordSeconds/@MaxRecordSeconds s</div>
+                            }
+                            @if (!string.IsNullOrEmpty(_recordError))
+                            {
+                                <div class="text-danger small mt-1">@_recordError</div>
                             }
                         </div>
                     </div>
@@ -48,26 +60,14 @@
                                        value="@_text2"
                                        @oninput="OnText2Input" />
                                 <button type="button"
-                                        class="@MicButtonClass"
-                                        @onclick="ToggleRecordingAsync"
-                                        title="@MicButtonTitle">@MicButtonIcon</button>
-                                <button type="button"
                                         class="btn btn-outline-secondary"
-                                        disabled="@(string.IsNullOrWhiteSpace(_text2) && string.IsNullOrEmpty(_audio2DataUrl))"
-                                        @onclick="SpeakValue2Async"
+                                        disabled="@string.IsNullOrWhiteSpace(_text2)"
+                                        @onclick="() => SpeakAsync(_text2, Language2)"
                                         title="Play">🔊</button>
                             </div>
                             @if (_text2.Length > 50)
                             {
                                 <div class="text-danger small mt-1">Maximum 50 characters</div>
-                            }
-                            @if (_isRecording)
-                            {
-                                <div class="text-danger small mt-1">@_recordSeconds/@MaxRecordSeconds s</div>
-                            }
-                            @if (!string.IsNullOrEmpty(_recordError))
-                            {
-                                <div class="text-danger small mt-1">@_recordError</div>
                             }
                         </div>
                     </div>
@@ -121,7 +121,7 @@
     private string _text1 = string.Empty;
     private string _text2 = string.Empty;
     private string? _imageDataUrl;
-    private string? _audio2DataUrl;
+    private string? _audio1DataUrl;
     private bool _isRecording;
     private int _recordSeconds;
     private string? _recordError;
@@ -130,13 +130,13 @@
 
     private string MicButtonClass => _isRecording
         ? "btn btn-danger"
-        : (!string.IsNullOrEmpty(_audio2DataUrl) ? "btn btn-success" : "btn btn-outline-secondary");
+        : (!string.IsNullOrEmpty(_audio1DataUrl) ? "btn btn-success" : "btn btn-outline-secondary");
 
     private string MicButtonIcon => _isRecording ? "⏺" : "🎤";
 
     private string MicButtonTitle => _isRecording
         ? "Stop recording"
-        : (!string.IsNullOrEmpty(_audio2DataUrl) ? "Re-record audio" : "Record audio");
+        : (!string.IsNullOrEmpty(_audio1DataUrl) ? "Re-record audio" : "Record audio");
 
     // Tracks the last value we auto-filled into each field, so we can update it
     // again on subsequent edits, but never overwrite text the user typed manually.
@@ -184,14 +184,14 @@
         await JS.InvokeVoidAsync("cardsApp.speakText", text, LanguageHelper.GetSpeechCode(language));
     }
 
-    private async Task SpeakValue2Async()
+    private async Task SpeakValue1Async()
     {
-        if (!string.IsNullOrEmpty(_audio2DataUrl))
+        if (!string.IsNullOrEmpty(_audio1DataUrl))
         {
-            await JS.InvokeVoidAsync("cardsApp.playRecording", _audio2DataUrl);
+            await JS.InvokeVoidAsync("cardsApp.playRecording", _audio1DataUrl);
             return;
         }
-        await SpeakAsync(_text2, Language2);
+        await SpeakAsync(_text1, Language1);
     }
 
     private async Task ToggleRecordingAsync()
@@ -256,7 +256,7 @@
     [JSInvokable]
     public Task OnRecordingComplete(string? dataUrl)
     {
-        _audio2DataUrl = string.IsNullOrEmpty(dataUrl) ? _audio2DataUrl : dataUrl;
+        _audio1DataUrl = string.IsNullOrEmpty(dataUrl) ? _audio1DataUrl : dataUrl;
         _isRecording = false;
         _recordSeconds = 0;
         StopRecordTicker();
@@ -361,7 +361,7 @@
             Language1, Language2,
             _text1, _text2,
             _imageDataUrl,
-            _audio2DataUrl);
+            _audio1DataUrl);
     }
 
     private void ResetForm()
@@ -370,7 +370,7 @@
         _text1 = string.Empty;
         _text2 = string.Empty;
         _imageDataUrl = null;
-        _audio2DataUrl = null;
+        _audio1DataUrl = null;
         _isRecording = false;
         _recordSeconds = 0;
         _recordError = null;
