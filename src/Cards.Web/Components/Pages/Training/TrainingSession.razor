@@ -113,7 +113,7 @@ else if (_currentCard is not null)
 @if (_showAddCard && _collection is not null)
 {
     <TermCardModal
-        UserId="_userId"
+        UserId="@_userId"
         Language1="_collection.Language1"
         Language2="_collection.Language2"
         OnSave="HandleCardSaved"
@@ -124,7 +124,7 @@ else if (_currentCard is not null)
 @if (_editCard is not null && _collection is not null)
 {
     <TermCardModal
-        UserId="_userId"
+        UserId="@_userId"
         Language1="_collection.Language1"
         Language2="_collection.Language2"
         ExistingCard="_editCard"

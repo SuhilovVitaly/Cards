@@ -28,6 +28,7 @@ public class JsonTermCardService : ITermCardService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             return await ReadAsync(id, ct);
         }
         finally
@@ -41,6 +42,7 @@ public class JsonTermCardService : ITermCardService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var cards = new List<TermCard>();
             foreach (var id in ids)
             {
@@ -87,18 +89,43 @@ public class JsonTermCardService : ITermCardService
         };
 
         var audioBytes = TryDecodeAudioDataUrl(audio1Base64);
-        if (audioBytes is not null)
-        {
-            var audioPath = Path.Combine(_audioDirectory, $"{card.Id}.webm");
-            await File.WriteAllBytesAsync(audioPath, audioBytes, ct);
-            card.Value1.AudioPath = $"/audio/{card.Id}.webm";
-            card.Value1.AudioStatus = AudioStatus.Generated;
-        }
-
         await _gate.WaitAsync(ct);
         try
         {
-            await WriteAsync(card, ct);
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
+            string? audioPath = null;
+
+            if (audioBytes is not null)
+            {
+                audioPath = Path.Combine(_audioDirectory, $"{card.Id}.webm");
+                var tempAudioPath = audioPath + ".tmp";
+
+                try
+                {
+                    await File.WriteAllBytesAsync(tempAudioPath, audioBytes, ct);
+                    File.Move(tempAudioPath, audioPath, overwrite: true);
+                    card.Value1.AudioPath = $"/audio/{card.Id}.webm";
+                    card.Value1.AudioStatus = AudioStatus.Generated;
+                }
+                catch
+                {
+                    DeleteIfExists(tempAudioPath);
+                    DeleteIfExists(audioPath);
+                    throw;
+                }
+            }
+
+            try
+            {
+                await WriteAsync(card, ct);
+            }
+            catch
+            {
+                if (audioPath is not null)
+                    DeleteIfExists(audioPath);
+
+                throw;
+            }
         }
         finally
         {
@@ -142,6 +169,7 @@ public class JsonTermCardService : ITermCardService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var card = await ReadAsync(id, ct);
             if (card is null) return null;
 
@@ -179,6 +207,7 @@ public class JsonTermCardService : ITermCardService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var path = GetFilePath(id);
             if (File.Exists(path))
                 File.Delete(path);
@@ -198,6 +227,7 @@ public class JsonTermCardService : ITermCardService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             return Directory.EnumerateFiles(_dataDirectory, "*.json").Count();
         }
         finally
@@ -211,6 +241,7 @@ public class JsonTermCardService : ITermCardService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var cards = new List<TermCard>();
             foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
             {
@@ -231,6 +262,7 @@ public class JsonTermCardService : ITermCardService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var ids = new List<Guid>();
             foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
             {
@@ -273,5 +305,11 @@ public class JsonTermCardService : ITermCardService
             File.Replace(tempPath, path, destinationBackupFileName: null);
         else
             File.Move(tempPath, path);
+    }
+
+    private static void DeleteIfExists(string path)
+    {
+        if (File.Exists(path))
+            File.Delete(path);
     }
 }

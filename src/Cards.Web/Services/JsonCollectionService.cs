@@ -26,6 +26,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var collections = new List<Collection>();
             foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
             {
@@ -46,6 +47,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var collections = new List<Collection>();
             foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
             {
@@ -66,6 +68,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             return await ReadAsync(id, ct);
         }
         finally
@@ -87,6 +90,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             await WriteAsync(collection, ct);
         }
         finally
@@ -101,6 +105,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var path = GetFilePath(id);
             if (File.Exists(path))
                 File.Delete(path);
@@ -116,6 +121,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var collection = await ReadAsync(collectionId, ct)
                 ?? throw new InvalidOperationException($"Collection '{collectionId}' not found.");
 
@@ -137,6 +143,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var collection = await ReadAsync(collectionId, ct)
                 ?? throw new InvalidOperationException($"Collection '{collectionId}' not found.");
 
@@ -157,6 +164,7 @@ public class JsonCollectionService : ICollectionService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             return Directory.EnumerateFiles(_dataDirectory, "*.json").Count();
         }
         finally

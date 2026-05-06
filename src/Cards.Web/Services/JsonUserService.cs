@@ -26,6 +26,7 @@ public class JsonUserService : IUserService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             return await FindByUsernameInternalAsync(username, ct);
         }
         finally
@@ -39,6 +40,7 @@ public class JsonUserService : IUserService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var existing = await FindByUsernameInternalAsync(username, ct);
             if (existing is not null)
                 throw new InvalidOperationException("A user with this name already exists.");
@@ -65,6 +67,7 @@ public class JsonUserService : IUserService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var user = await FindByUsernameInternalAsync(username, ct);
             if (user is null) return null;
 
@@ -81,6 +84,7 @@ public class JsonUserService : IUserService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             return Directory.EnumerateFiles(_dataDirectory, "*.json").Count();
         }
         finally
@@ -94,6 +98,7 @@ public class JsonUserService : IUserService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var users = new List<User>();
             foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.json"))
             {
@@ -114,6 +119,7 @@ public class JsonUserService : IUserService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var path = Path.Combine(_dataDirectory, $"{id}.json");
             if (File.Exists(path))
                 File.Delete(path);
@@ -129,6 +135,7 @@ public class JsonUserService : IUserService
         await _gate.WaitAsync(ct);
         try
         {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
             var path = Path.Combine(_dataDirectory, $"{id}.json");
             if (!File.Exists(path))
                 throw new InvalidOperationException($"User '{id}' not found.");
