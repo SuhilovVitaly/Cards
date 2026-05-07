@@ -100,6 +100,32 @@ public class JsonCollectionService : ICollectionService
         return collection;
     }
 
+    public async Task RenameAsync(Guid id, string name, CancellationToken ct = default)
+    {
+        var trimmed = name?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(trimmed))
+            throw new ArgumentException("Name cannot be empty.", nameof(name));
+
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
+            var collection = await ReadAsync(id, ct)
+                ?? throw new InvalidOperationException($"Collection '{id}' not found.");
+
+            if (collection.Name == trimmed)
+                return;
+
+            collection.Name = trimmed;
+            collection.ModifiedAt = DateTime.UtcNow;
+            await WriteAsync(collection, ct);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);

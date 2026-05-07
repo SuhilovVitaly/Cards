@@ -1,0 +1,92 @@
+@page "/collections/{Id:guid}/edit"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ICollectionService CollectionService
+@inject NavigationManager Navigation
+
+<PageTitle>Edit collection</PageTitle>
+
+<div class="page-header">
+    <h1>Edit collection</h1>
+</div>
+
+@if (_loading)
+{
+    <p class="text-muted"><em>Loading...</em></p>
+}
+else if (_notFound)
+{
+    <div class="alert alert-danger">Collection not found.</div>
+}
+else
+{
+    <div class="surface-card" style="max-width: 560px;">
+        <EditForm Model="_model" OnValidSubmit="HandleValidSubmit" FormName="collection-edit">
+            <DataAnnotationsValidator />
+
+            <div class="mb-4">
+                <label class="form-label" for="collection-name">Name</label>
+                <InputText id="collection-name" class="form-control" @bind-Value="_model.Name" />
+                <ValidationMessage For="@(() => _model.Name)" />
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary" disabled="@_saving">Save</button>
+                <a class="btn btn-outline-secondary" href="">Cancel</a>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private readonly CollectionEditModel _model = new();
+    private bool _loading = true;
+    private bool _notFound;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateTask;
+        var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        var collection = await CollectionService.GetByIdAsync(Id);
+        // Only the owner is allowed to edit a collection
+        if (collection is null || collection.UserId != userId)
+        {
+            _notFound = true;
+            _loading = false;
+            return;
+        }
+
+        _model.Name = collection.Name;
+        _loading = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        _saving = true;
+        try
+        {
+            await CollectionService.RenameAsync(Id, _model.Name);
+            Navigation.NavigateTo("");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    public class CollectionEditModel
+    {
+        [Required(ErrorMessage = "Enter a name")]
+        [StringLength(100, ErrorMessage = "Maximum 100 characters")]
+        public string Name { get; set; } = string.Empty;
+    }
+}

@@ -4,6 +4,8 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject ICollectionService CollectionService
+@inject ITermCardService TermCardService
+@inject ITranslationService TranslationService
 @inject NavigationManager Navigation
 
 <PageTitle>New collection</PageTitle>
@@ -43,14 +45,34 @@
             <ValidationMessage For="@(() => _model.Language2)" />
         </div>
 
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary" disabled="@_saving">Create</button>
+        <div class="mb-4">
+            <label class="form-label" for="bulk-text">Bulk text (optional)</label>
+            <InputTextArea id="bulk-text" class="form-control" rows="6"
+                           @bind-Value="_model.BulkText"
+                           placeholder="Paste text in the learning language. Each unique word with 4+ letters will become a card." />
+            <div class="form-text text-muted mt-1">
+                Words shorter than 4 letters and duplicates are skipped. Each remaining word is auto-translated into the native language; words that fail to translate are skipped.
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary" disabled="@_saving">
+                @(_saving ? "Creating..." : "Create")
+            </button>
             <a class="btn btn-outline-secondary" href="">Cancel</a>
+            @if (_saving && _bulkTotal > 0)
+            {
+                <span class="text-muted small ms-2">
+                    Creating cards: @_bulkProcessed / @_bulkTotal
+                </span>
+            }
         </div>
     </EditForm>
 </div>
 
 @code {
+    private const int MinWordLength = 4;
+
     [CascadingParameter]
     private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
@@ -61,23 +83,97 @@
     };
 
     private bool _saving;
+    private int _bulkProcessed;
+    private int _bulkTotal;
 
     private async Task HandleValidSubmit()
     {
         if (_model.Language1 == _model.Language2) return;
 
         _saving = true;
+        _bulkProcessed = 0;
+        _bulkTotal = 0;
         try
         {
             var state = await AuthStateTask;
             var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            await CollectionService.CreateAsync(userId, _model.Name, _model.Language1, _model.Language2);
+            var collection = await CollectionService.CreateAsync(userId, _model.Name, _model.Language1, _model.Language2);
+
+            if (!string.IsNullOrWhiteSpace(_model.BulkText))
+            {
+                await PopulateCardsFromBulkAsync(userId, collection.Id, _model.BulkText);
+            }
+
             Navigation.NavigateTo("");
         }
         finally
         {
             _saving = false;
         }
+    }
+
+    private async Task PopulateCardsFromBulkAsync(string userId, Guid collectionId, string text)
+    {
+        var words = ExtractWords(text);
+        _bulkTotal = words.Count;
+        StateHasChanged();
+
+        foreach (var word in words)
+        {
+            var translation = await TranslationService.TranslateAsync(word, _model.Language1, _model.Language2);
+            // Skip words for which translation failed or returned empty
+            if (!string.IsNullOrWhiteSpace(translation))
+            {
+                var card = await TermCardService.CreateAsync(
+                    userId,
+                    _model.Language1, _model.Language2,
+                    word, translation,
+                    imageDataUrl: null,
+                    audio1Base64: null);
+                await CollectionService.AddCardAsync(collectionId, card.Id);
+            }
+
+            _bulkProcessed++;
+            StateHasChanged();
+        }
+    }
+
+    // Splits text into unique words (case-insensitive) of MinWordLength letters or more,
+    // preserving the order of first appearance.
+    private static List<string> ExtractWords(string text)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>();
+        var current = new System.Text.StringBuilder();
+
+        foreach (var ch in text)
+        {
+            if (char.IsLetter(ch))
+            {
+                current.Append(ch);
+            }
+            else if (current.Length > 0)
+            {
+                AppendIfEligible(current, seen, result);
+                current.Clear();
+            }
+        }
+
+        if (current.Length > 0)
+            AppendIfEligible(current, seen, result);
+
+        return result;
+    }
+
+    private static void AppendIfEligible(
+        System.Text.StringBuilder buffer,
+        HashSet<string> seen,
+        List<string> result)
+    {
+        if (buffer.Length < MinWordLength) return;
+        var word = buffer.ToString();
+        if (seen.Add(word))
+            result.Add(word);
     }
 
     public class CollectionFormModel : IValidatableObject
@@ -89,6 +185,8 @@
         public Language Language1 { get; set; }
 
         public Language Language2 { get; set; }
+
+        public string BulkText { get; set; } = string.Empty;
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
