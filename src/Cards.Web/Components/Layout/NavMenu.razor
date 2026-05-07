@@ -1,77 +1,94 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Cards</a>
-    </div>
+﻿@inject IAppInfoService AppInfo
+
+<div class="sidebar-top">
+    <a class="brand" href="">
+        <span class="brand-mark" aria-hidden="true">
+            <span class="brand-dot"></span>
+            <span class="brand-dot"></span>
+        </span>
+        <span class="brand-text">Cards</span>
+    </a>
+
+    <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column nav-root">
+    <nav class="nav-root">
+        <div class="nav-section">
+            <AuthorizeView>
+                <Authorized>
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 3 3 11h2v9h5v-6h4v6h5v-9h2L12 3z" />
+                        </svg>
+                        <span>Collections</span>
+                    </NavLink>
+
+                    <NavLink class="nav-link" href="public">
+                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+                        </svg>
+                        <span>Public collections</span>
+                    </NavLink>
+
+                    <NavLink class="nav-link" href="collections/create">
+                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z" />
+                        </svg>
+                        <span>New collection</span>
+                    </NavLink>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink class="nav-link" href="public">
+                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+                        </svg>
+                        <span>Public collections</span>
+                    </NavLink>
+
+                    <a class="nav-link" href="login">
+                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M10 17l1.41-1.41L7.83 12H20v-2H7.83l3.58-3.59L10 5l-6 6 6 6zM4 4h6V2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h6v-2H4V4z" />
+                        </svg>
+                        <span>Sign in</span>
+                    </a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+
         <AuthorizeView>
             <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Collections
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="public">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Public collections
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="collections/create">
-                        <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> New collection
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3 mt-3 user-info">
-                    <div class="text-white-50 small">@context.User.Identity?.Name</div>
+                <div class="nav-user-label">@context.User.Identity?.Name</div>
+                <div class="nav-section nav-section-user">
                     <form action="logout" method="post" class="m-0 p-0">
                         <AntiforgeryToken />
                         <button type="submit" class="nav-link nav-logout-btn">
-                            <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span> Sign out
+                            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M16 17v-2H9v-2h7V9l5 4-5 4zM14 3a2 2 0 0 1 2 2v3h-2V5H5v14h9v-3h2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9z" />
+                            </svg>
+                            <span>Sign out</span>
                         </button>
                     </form>
                 </div>
             </Authorized>
-            <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="public">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Public collections
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <a class="nav-link" href="login">
-                        <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Sign in
-                    </a>
-                </div>
-            </NotAuthorized>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin">
             <Authorized>
-                <div class="nav-item px-3">
+                <div class="nav-section">
                     <NavLink class="nav-link" href="backoffice">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> BackOffice
+                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 5h8v6H3V5zm10 0h8v3h-8V5zm0 5h8v9h-8v-9zM3 13h8v6H3v-6z" />
+                        </svg>
+                        <span>BackOffice</span>
                     </NavLink>
                 </div>
             </Authorized>
         </AuthorizeView>
 
-        <div class="app-stats px-3">
-            <div class="app-stats-row">
-                <span class="app-stats-label">Version</span>
-                <span class="app-stats-value">@AppInfo.Version</span>
-            </div>
+        <div class="app-stats">
+            <span class="app-stats-label">Version</span>
+            <span class="app-stats-value">@AppInfo.Version</span>
         </div>
     </nav>
 </div>
-
-@code {
-    [Inject] private IAppInfoService AppInfo { get; set; } = default!;
-}

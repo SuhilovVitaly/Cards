@@ -9,14 +9,14 @@
 
 <PageTitle>BackOffice — Users</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Users</h1>
+<div class="page-header">
+    <h1>Users</h1>
     <a class="btn btn-outline-secondary" href="backoffice">Back</a>
 </div>
 
 @if (_users is null)
 {
-    <p><em>Loading...</em></p>
+    <p class="text-muted"><em>Loading...</em></p>
 }
 else if (_users.Count == 0)
 {
@@ -24,7 +24,7 @@ else if (_users.Count == 0)
 }
 else
 {
-    <div class="table-responsive">
+    <div class="surface-table table-responsive">
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
@@ -43,7 +43,7 @@ else
                     var roleLabel = isAdmin ? "Admin" : (user.IsPremium ? "Premium" : "User");
                     <tr>
                         <td>
-                            <strong>@user.Username</strong>
+                            <span class="row-title">@user.Username</span>
                             @if (isSelf)
                             {
                                 <span class="badge bg-secondary ms-2">you</span>
@@ -75,11 +75,13 @@ else
                                     }
                                 }
                                 <button type="button"
-                                        class="btn btn-sm btn-outline-danger"
+                                        class="btn-icon btn-icon-delete"
                                         disabled="@(!canDelete)"
                                         title="@(isSelf ? "You cannot delete yourself" : isAdmin ? "Admins cannot be deleted" : "Delete user")"
                                         @onclick="() => AskDelete(user)">
-                                    Delete
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M9 3h6v2h5v2h-2v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7H4V5h5V3zm1 6v9h2V9h-2zm4 0v9h2V9h-2z" />
+                                    </svg>
                                 </button>
                             </div>
                         </td>
@@ -92,16 +94,17 @@ else
 
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
-    <div class="alert alert-danger">@_errorMessage</div>
+    <div class="alert alert-danger mt-3">@_errorMessage</div>
 }
 
 @if (_userToDelete is not null)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.65);">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Delete user?</h5>
+                    <button type="button" class="btn-close" disabled="@_isDeleting" @onclick="CancelDelete"></button>
                 </div>
                 <div class="modal-body">
                     <p>

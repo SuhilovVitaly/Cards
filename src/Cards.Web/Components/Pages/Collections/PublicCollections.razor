@@ -7,13 +7,13 @@
 
 <PageTitle>Public collections</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Public collections</h1>
+<div class="page-header">
+    <h1>Public collections</h1>
 </div>
 
 @if (_collections is null)
 {
-    <p><em>Loading...</em></p>
+    <p class="text-muted"><em>Loading...</em></p>
 }
 else if (_collections.Count == 0)
 {
@@ -23,7 +23,7 @@ else if (_collections.Count == 0)
 }
 else
 {
-    <div class="table-responsive">
+    <div class="surface-table table-responsive">
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
@@ -41,11 +41,10 @@ else
                 {
                     <tr>
                         <td>
-                            <strong>@col.Name</strong>
-                            <br />
-                            <small class="text-muted">
+                            <div class="row-title">@col.Name</div>
+                            <div class="row-subtitle">
                                 @LanguageHelper.GetPairDisplayName(col.Language1, col.Language2)
-                            </small>
+                            </div>
                         </td>
                         <td>
                             <span class="text-muted">@GetOwnerName(col.UserId)</span>
@@ -58,15 +57,20 @@ else
                             <div class="d-flex gap-2 justify-content-end flex-wrap">
                                 @if (col.CardIds.Count > 0)
                                 {
-                                    <a class="btn btn-sm btn-success"
-                                       href="@($"training/{col.Id}")">
-                                        Train
+                                    <a class="btn-icon btn-icon-train"
+                                       href="@($"training/{col.Id}")"
+                                       title="Train">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M8 5v14l11-7L8 5z" />
+                                        </svg>
                                     </a>
                                 }
                                 else
                                 {
-                                    <button type="button" class="btn btn-sm btn-success" disabled>
-                                        Train
+                                    <button type="button" class="btn-icon btn-icon-train" disabled title="No cards yet">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M8 5v14l11-7L8 5z" />
+                                        </svg>
                                     </button>
                                 }
                             </div>

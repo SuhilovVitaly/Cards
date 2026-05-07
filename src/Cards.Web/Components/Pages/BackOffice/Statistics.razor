@@ -9,8 +9,8 @@
 
 <PageTitle>BackOffice — Statistics</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Statistics</h1>
+<div class="page-header">
+    <h1>Statistics</h1>
     <a class="btn btn-outline-secondary" href="backoffice">Back</a>
 </div>
 
@@ -18,30 +18,24 @@
 {
     <div class="row g-3">
         <div class="col-sm-6 col-lg-4">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <div class="text-muted text-uppercase small">Users</div>
-                    <div class="display-5 fw-bold">@_userCount</div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-label">Users</div>
+                <div class="stat-value">@_userCount</div>
             </div>
         </div>
         <div class="col-sm-6 col-lg-4">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <div class="text-muted text-uppercase small">Collections</div>
-                    <div class="display-5 fw-bold">@_collectionCount</div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-label">Collections</div>
+                <div class="stat-value">@_collectionCount</div>
             </div>
         </div>
         <div class="col-sm-6 col-lg-4">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <div class="text-muted text-uppercase small">Cards</div>
-                    <div class="display-5 fw-bold">@_cardCount</div>
-                    <div class="text-muted small mt-1">
-                        Linked: <strong>@_linkedCardCount</strong> ·
-                        Orphans: <strong>@_orphanCardIds.Count</strong>
-                    </div>
+            <div class="stat-card">
+                <div class="stat-label">Cards</div>
+                <div class="stat-value">@_cardCount</div>
+                <div class="stat-meta">
+                    Linked: <strong>@_linkedCardCount</strong> ·
+                    Orphans: <strong>@_orphanCardIds.Count</strong>
                 </div>
             </div>
         </div>
@@ -61,8 +55,8 @@
         </button>
     </div>
 
-    <div class="mt-4">
-        <h5>Build info</h5>
+    <div class="mt-4 surface-card">
+        <h5 class="mb-3">Build info</h5>
         <dl class="row mb-0">
             <dt class="col-sm-3 col-md-2 text-muted">Version</dt>
             <dd class="col-sm-9 col-md-10">@AppInfo.Version</dd>
@@ -73,7 +67,7 @@
 }
 else
 {
-    <p><em>Loading...</em></p>
+    <p class="text-muted"><em>Loading...</em></p>
 }
 
 @if (!string.IsNullOrEmpty(_errorMessage))
@@ -83,11 +77,12 @@ else
 
 @if (_showCleanupConfirm)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.65);">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Cleanup orphan cards?</h5>
+                    <button type="button" class="btn-close" disabled="@_isCleaning" @onclick="CancelCleanup"></button>
                 </div>
                 <div class="modal-body">
                     <p>

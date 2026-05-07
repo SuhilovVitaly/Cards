@@ -8,14 +8,14 @@
 
 <PageTitle>Collections</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Collections</h1>
+<div class="page-header">
+    <h1>Collections</h1>
     <a class="btn btn-primary" href="collections/create">+ New collection</a>
 </div>
 
 @if (_collections is null)
 {
-    <p><em>Loading...</em></p>
+    <p class="text-muted"><em>Loading...</em></p>
 }
 else if (_collections.Count == 0)
 {
@@ -25,7 +25,7 @@ else if (_collections.Count == 0)
 }
 else
 {
-    <div class="table-responsive">
+    <div class="surface-table table-responsive">
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
@@ -42,11 +42,10 @@ else
                 {
                     <tr>
                         <td>
-                            <strong>@col.Name</strong>
-                            <br />
-                            <small class="text-muted">
+                            <div class="row-title">@col.Name</div>
+                            <div class="row-subtitle">
                                 @LanguageHelper.GetPairDisplayName(col.Language1, col.Language2)
-                            </small>
+                            </div>
                         </td>
                         <td>@LanguageHelper.GetDisplayName(col.Language1)</td>
                         <td>@LanguageHelper.GetDisplayName(col.Language2)</td>
@@ -54,26 +53,37 @@ else
                         <td>@col.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</td>
                         <td class="text-end">
                             <div class="d-flex gap-2 justify-content-end flex-wrap">
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                        @onclick="() => OpenAddCard(col)">
-                                    + Card
-                                </button>
                                 @if (col.CardIds.Count > 0)
                                 {
-                                    <a class="btn btn-sm btn-success"
-                                       href="@($"training/{col.Id}")">
-                                        Train
+                                    <a class="btn-icon btn-icon-train"
+                                       href="@($"training/{col.Id}")"
+                                       title="Train">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M8 5v14l11-7L8 5z" />
+                                        </svg>
                                     </a>
                                 }
                                 else
                                 {
-                                    <button type="button" class="btn btn-sm btn-success" disabled>
-                                        Train
+                                    <button type="button" class="btn-icon btn-icon-train" disabled title="No cards yet">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M8 5v14l11-7L8 5z" />
+                                        </svg>
                                     </button>
                                 }
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        @onclick="() => AskDelete(col)">
-                                    Delete
+                                <button type="button" class="btn-icon btn-icon-add"
+                                        @onclick="() => OpenAddCard(col)"
+                                        title="Add card">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z" />
+                                    </svg>
+                                </button>
+                                <button type="button" class="btn-icon btn-icon-delete"
+                                        @onclick="() => AskDelete(col)"
+                                        title="Delete">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M9 3h6v2h5v2h-2v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7H4V5h5V3zm1 6v9h2V9h-2zm4 0v9h2V9h-2z" />
+                                    </svg>
                                 </button>
                             </div>
                         </td>
@@ -86,14 +96,15 @@ else
 
 @if (_collectionToDelete is not null)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.65);">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Delete collection?</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
                 </div>
                 <div class="modal-body">
-                    <p>The collection <strong>@_collectionToDelete.Name</strong> will be deleted.</p>
+                    <p class="mb-0">The collection <strong>@_collectionToDelete.Name</strong> will be deleted.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" @onclick="CancelDelete">Cancel</button>

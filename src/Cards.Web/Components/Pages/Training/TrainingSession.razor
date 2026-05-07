@@ -11,15 +11,15 @@
 
 @if (_collection is null)
 {
-    <p><em>Loading...</em></p>
+    <p class="text-muted"><em>Loading...</em></p>
 }
 else if (!_sessionActive)
 {
-    <div class="text-center mt-5">
+    <div class="training-summary">
         <h2>Training complete</h2>
-        <p class="lead mt-3">
-            <span class="text-success fw-bold">@_correct</span> /
-            <span class="text-danger fw-bold">@_incorrect</span> /
+        <p class="training-counter mt-3" style="font-size:1.2rem;">
+            <span class="c-correct">@_correct</span> /
+            <span class="c-wrong">@_incorrect</span> /
             <span>@_total</span>
         </p>
         <a class="btn btn-primary mt-3" href="">Back to collections</a>
@@ -28,13 +28,13 @@ else if (!_sessionActive)
 else if (_currentCard is not null)
 {
     <div class="training-screen">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="FinishSession">
+        <div class="training-toolbar">
+            <button type="button" class="btn-pill" @onclick="FinishSession">
                 Finish
             </button>
 
-            <div class="d-flex align-items-center gap-3">
-                <select class="form-select form-select-sm" style="width:auto;"
+            <div class="training-toolbar-center">
+                <select class="form-select"
                         value="@_selectedLanguage" @onchange="OnLanguageChanged">
                     <option value="@_collection.Language1">
                         @LanguageHelper.GetDisplayName(_collection.Language1)
@@ -44,24 +44,24 @@ else if (_currentCard is not null)
                     </option>
                 </select>
 
-                <span class="training-progress">
-                    <span class="text-success fw-bold">@_correct</span> /
-                    <span class="text-danger fw-bold">@_incorrect</span> /
+                <span class="training-counter">
+                    <span class="c-correct">@_correct</span> /
+                    <span class="c-wrong">@_incorrect</span> /
                     <span>@_total</span>
                 </span>
             </div>
 
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
                 @if (_isOwner)
                 {
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAddCard">
+                    <button type="button" class="btn-pill" @onclick="OpenAddCard">
                         + Card
                     </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OpenEditCard"
+                    <button type="button" class="btn-pill" @onclick="OpenEditCard"
                             disabled="@(_currentCard is null)">
                         Edit card
                     </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="AskDeleteCard">
+                    <button type="button" class="btn-pill-danger" @onclick="AskDeleteCard">
                         Delete card
                     </button>
                 }
@@ -74,35 +74,37 @@ else if (_currentCard is not null)
         }
 
         <div class="training-card">
-            <div class="training-card-image">
-                @if (!string.IsNullOrEmpty(_currentCard.ImageDataUrl))
-                {
+            @if (!string.IsNullOrEmpty(_currentCard.ImageDataUrl))
+            {
+                <div class="training-card-image">
                     <img src="@_currentCard.ImageDataUrl" alt="" />
-                }
-            </div>
+                </div>
+            }
             <div class="training-card-text" dir="@LanguageHelper.GetTextDirection(currentLang)">
                 @currentValue.Text
             </div>
-            <button type="button" class="btn btn-outline-secondary btn-sm mt-3"
+            <button type="button" class="btn-audio"
                     @onclick="SpeakCurrentCardAsync"
                     title="Play">
-                🔊
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z" />
+                </svg>
             </button>
         </div>
 
-        <div class="d-flex gap-2 justify-content-center mt-4">
+        <div class="training-actions">
             @if (!_answered)
             {
-                <button type="button" class="btn btn-danger btn-lg" @onclick="HandleDontRemember">
+                <button type="button" class="btn-cta-purple" @onclick="HandleDontRemember">
                     Show translation
                 </button>
-                <button type="button" class="btn btn-success btn-lg" @onclick="HandleRemember">
+                <button type="button" class="btn-cta-green" @onclick="HandleRemember">
                     Next
                 </button>
             }
             else
             {
-                <button type="button" class="btn btn-primary btn-lg" @onclick="HandleBackToSource">
+                <button type="button" class="btn-cta-purple" @onclick="HandleBackToSource">
                     Back
                 </button>
             }
@@ -134,14 +136,15 @@ else if (_currentCard is not null)
 
 @if (_showDeleteConfirm && _currentCard is not null)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.65);">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Delete card?</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDeleteCard"></button>
                 </div>
                 <div class="modal-body">
-                    <p>The card will be removed from this collection.</p>
+                    <p class="mb-0">The card will be removed from this collection.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" @onclick="CancelDeleteCard">Cancel</button>
