@@ -74,6 +74,9 @@ else if (_currentCard is not null)
         }
 
         <div class="training-card">
+            <div class="training-card-meta">
+                Last viewed: @FormatLastViewed(_currentCard)
+            </div>
             @if (!string.IsNullOrEmpty(_currentCard.ImageDataUrl))
             {
                 <div class="training-card-image">
@@ -234,8 +237,30 @@ else if (_currentCard is not null)
         {
             _correct++;
         }
+
+        // Persist the view timestamp only when the current user is the card's creator,
+        // so the value reflects the owner's spaced-repetition history
+        if (_currentCard is not null
+            && !string.IsNullOrEmpty(_userId)
+            && string.Equals(_currentCard.UserId, _userId, StringComparison.Ordinal))
+        {
+            var updated = await TermCardService.UpdateLastViewedAsync(_currentCard.Id, DateTime.UtcNow);
+            if (updated is not null)
+            {
+                _currentCard.LastViewedAt = updated.LastViewedAt;
+            }
+        }
+
         AdvanceToNext();
         await SpeakCurrentCardAsync();
+    }
+
+    private string FormatLastViewed(TermCard? card)
+    {
+        if (card is null) return string.Empty;
+        // Fall back to the collection creation time for cards that have never been viewed yet
+        var timestamp = card.LastViewedAt ?? _collection?.CreatedAt ?? card.CreatedAt;
+        return timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
     }
 
     private async Task HandleDontRemember()

@@ -21,6 +21,12 @@ public class TermCard
     public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// Timestamp of the last time the card creator viewed this card during training
+    /// (i.e. pressed "Next"). Used as the basis for spaced repetition scheduling.
+    /// </summary>
+    public DateTime? LastViewedAt { get; set; }
+
+    /// <summary>
     /// Single image for the card. New cards write the picture into <see cref="Value1"/>.
     /// Falls back to <see cref="Value2"/> for legacy cards that stored it on the second value.
     /// </summary>

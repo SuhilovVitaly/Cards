@@ -26,6 +26,8 @@ public interface ITermCardService
         string? audio1Source,
         CancellationToken ct = default);
 
+    Task<TermCard?> UpdateLastViewedAsync(Guid id, DateTime viewedAt, CancellationToken ct = default);
+
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 
     Task<int> GetTotalCountAsync(CancellationToken ct = default);

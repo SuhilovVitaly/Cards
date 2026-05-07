@@ -202,6 +202,26 @@ public class JsonTermCardService : ITermCardService
         }
     }
 
+    public async Task<TermCard?> UpdateLastViewedAsync(Guid id, DateTime viewedAt, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var dataLock = await DataFileLock.AcquireAsync(_dataDirectory, ct);
+            var card = await ReadAsync(id, ct);
+            if (card is null) return null;
+
+            card.LastViewedAt = viewedAt;
+
+            await WriteAsync(card, ct);
+            return card;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
