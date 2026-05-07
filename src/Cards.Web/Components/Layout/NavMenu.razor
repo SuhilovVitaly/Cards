@@ -1,4 +1,7 @@
 ﻿@inject IAppInfoService AppInfo
+@inject ITermCardService TermCardService
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="sidebar-top">
     <a class="brand" href="">
@@ -58,6 +61,36 @@
 
         <AuthorizeView>
             <Authorized>
+                <div class="nav-section nav-section-srs">
+                    <div class="nav-section-label">SRS levels</div>
+                    @foreach (var level in _srsLevels)
+                    {
+                        var levelNum = (int)level;
+                        var count = _counts.TryGetValue(level, out var c) ? c : 0;
+                        var label = GetSrsLabel(level);
+                        if (count == 0)
+                        {
+                            <span class="nav-link nav-link-disabled" title="No cards at this level">
+                                <span class="nav-level-num">@levelNum</span>
+                                <span class="nav-link-text">@label</span>
+                                <span class="nav-count">0</span>
+                            </span>
+                        }
+                        else
+                        {
+                            <NavLink class="nav-link" href="@($"training/srs/{levelNum}")">
+                                <span class="nav-level-num">@levelNum</span>
+                                <span class="nav-link-text">@label</span>
+                                <span class="nav-count">@count</span>
+                            </NavLink>
+                        }
+                    }
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <Authorized>
                 <div class="nav-user-label">@context.User.Identity?.Name</div>
                 <div class="nav-section nav-section-user">
                     <form action="logout" method="post" class="m-0 p-0">
@@ -92,3 +125,59 @@
         </div>
     </nav>
 </div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private static readonly SrsLevel[] _srsLevels = Enum.GetValues<SrsLevel>();
+    private Dictionary<SrsLevel, int> _counts = new();
+    private string _userId = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        }
+        await LoadCountsAsync();
+        // Refresh counts on every navigation so the sidebar reflects card add/delete
+        // and any future changes that affect SrsLevel distribution.
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private async Task LoadCountsAsync()
+    {
+        if (string.IsNullOrEmpty(_userId))
+        {
+            _counts = new Dictionary<SrsLevel, int>();
+            return;
+        }
+        var cards = await TermCardService.GetAllByUserAsync(_userId);
+        _counts = _srsLevels.ToDictionary(l => l, l => cards.Count(c => c.SrsLevel == l));
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await LoadCountsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private static string GetSrsLabel(SrsLevel level) => level switch
+    {
+        SrsLevel.Level1 => "Initial fixation",
+        SrsLevel.Level2 => "Hold in short-term memory",
+        SrsLevel.Level3 => "First step to mid-term memory",
+        SrsLevel.Level4 => "Strengthen connection",
+        SrsLevel.Level5 => "Stability check",
+        SrsLevel.Level6 => "Transfer to long-term memory",
+        SrsLevel.Level7 => "Long-term retention",
+        _ => level.ToString()
+    };
+}

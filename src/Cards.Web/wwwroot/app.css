@@ -696,7 +696,10 @@ code {
     color: var(--c-text-dim);
     font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
+    text-align: right;
+    line-height: 1.4;
 }
+
 
 .training-card-image {
     width: 100%;

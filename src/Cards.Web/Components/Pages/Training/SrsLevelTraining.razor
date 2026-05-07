@@ -1,0 +1,278 @@
+@page "/training/srs/{Level:int}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ITermCardService TermCardService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>SRS training</PageTitle>
+
+@if (!_loaded)
+{
+    <p class="text-muted"><em>Loading...</em></p>
+}
+else if (_total == 0)
+{
+    <div class="training-summary">
+        <h2>No cards at this level</h2>
+        <a class="btn btn-primary mt-3" href="">Back to collections</a>
+    </div>
+}
+else if (!_sessionActive)
+{
+    <div class="training-summary">
+        <h2>Training complete</h2>
+        <p class="training-counter mt-3" style="font-size:1.2rem;">
+            <span class="c-correct">@_correct</span> /
+            <span class="c-wrong">@_incorrect</span> /
+            <span>@_total</span>
+        </p>
+        <a class="btn btn-primary mt-3" href="">Back to collections</a>
+    </div>
+}
+else if (_currentCard is not null)
+{
+    <div class="training-screen">
+        <div class="training-toolbar">
+            <button type="button" class="btn-pill" @onclick="FinishSession">
+                Finish
+            </button>
+
+            <div class="training-toolbar-center">
+                <span class="training-counter">
+                    <span class="c-correct">@_correct</span> /
+                    <span class="c-wrong">@_incorrect</span> /
+                    <span>@_total</span>
+                </span>
+            </div>
+        </div>
+
+        @{
+            var currentValue = GetCurrentValue();
+            var currentLang = GetCurrentLanguage();
+        }
+
+        <div class="training-card">
+            <div class="training-card-meta">
+                <div>SRS level @Level</div>
+                <div>Correct attempts: @_currentCard.CorrectAttempts</div>
+                <div>Last viewed: @FormatLastViewed(_currentCard)</div>
+            </div>
+            @if (!string.IsNullOrEmpty(_currentCard.ImageDataUrl))
+            {
+                <div class="training-card-image">
+                    <img src="@_currentCard.ImageDataUrl" alt="" />
+                </div>
+            }
+            <div class="training-card-text" dir="@LanguageHelper.GetTextDirection(currentLang)">
+                @currentValue.Text
+            </div>
+            <button type="button" class="btn-audio"
+                    @onclick="SpeakCurrentCardAsync"
+                    title="Play">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="training-actions">
+            @if (!_answered)
+            {
+                <button type="button" class="btn-cta-purple" @onclick="HandleDontRemember">
+                    Show translation
+                </button>
+                <button type="button" class="btn-cta-green" @onclick="HandleRemember">
+                    Next
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn-cta-purple" @onclick="HandleBackToSource">
+                    Back
+                </button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Level { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private string _userId = string.Empty;
+    private bool _loaded;
+    private Queue<TermCard> _queue = new();
+    private TermCard? _currentCard;
+    private bool _answered;
+    private int _correct;
+    private int _incorrect;
+    private int _total;
+    private bool _sessionActive;
+    private bool _needsAutoPlay;
+    // Tracks card ids for which a failure has already been counted in this session.
+    private readonly HashSet<Guid> _failedCardIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateTask;
+        _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        // Reject unauthenticated users and out-of-range level values.
+        if (string.IsNullOrEmpty(_userId) || !Enum.IsDefined(typeof(SrsLevel), Level))
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        await StartSession();
+        _loaded = true;
+        if (_sessionActive)
+        {
+            _needsAutoPlay = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_needsAutoPlay)
+        {
+            _needsAutoPlay = false;
+            await SpeakCurrentCardAsync();
+        }
+    }
+
+    private async Task StartSession()
+    {
+        var allUserCards = await TermCardService.GetAllByUserAsync(_userId);
+        var levelEnum = (SrsLevel)Level;
+        var cards = allUserCards.Where(c => c.SrsLevel == levelEnum).ToList();
+        var shuffled = Shuffle(cards);
+        _queue = new Queue<TermCard>(shuffled);
+        _total = shuffled.Count;
+        _correct = 0;
+        _incorrect = 0;
+        _answered = false;
+        _failedCardIds.Clear();
+        _sessionActive = _queue.Count > 0;
+        _currentCard = _queue.Count > 0 ? _queue.Dequeue() : null;
+    }
+
+    private async Task HandleRemember()
+    {
+        // Cards that have already been peeked do not contribute to the correct counter
+        var pressedWithoutPeek = _currentCard is not null && !_failedCardIds.Contains(_currentCard.Id);
+        if (pressedWithoutPeek)
+        {
+            _correct++;
+            // "Next" without "Show translation" counts as a correct attempt toward the next SRS level
+            _currentCard!.CorrectAttempts++;
+        }
+
+        // All cards in this view belong to the current user, so we always persist progress
+        if (_currentCard is not null)
+        {
+            var updated = await TermCardService.UpdateLastViewedAsync(
+                _currentCard.Id,
+                DateTime.UtcNow,
+                _currentCard.CorrectAttempts);
+            if (updated is not null)
+            {
+                _currentCard.LastViewedAt = updated.LastViewedAt;
+                _currentCard.CorrectAttempts = updated.CorrectAttempts;
+            }
+        }
+
+        AdvanceToNext();
+        await SpeakCurrentCardAsync();
+    }
+
+    private async Task HandleDontRemember()
+    {
+        if (_currentCard is not null && _failedCardIds.Add(_currentCard.Id))
+        {
+            _incorrect++;
+        }
+        _answered = true;
+        await SpeakCurrentCardAsync();
+    }
+
+    private async Task HandleBackToSource()
+    {
+        _answered = false;
+        await SpeakCurrentCardAsync();
+    }
+
+    private void AdvanceToNext()
+    {
+        _answered = false;
+        if (_queue.Count > 0)
+        {
+            _currentCard = _queue.Dequeue();
+        }
+        else
+        {
+            _sessionActive = false;
+            _currentCard = null;
+        }
+    }
+
+    private async Task FinishSession()
+    {
+        _sessionActive = false;
+        await JS.InvokeVoidAsync("cardsApp.stopSpeaking");
+    }
+
+    private string FormatLastViewed(TermCard? card)
+    {
+        if (card is null) return string.Empty;
+        // No parent collection here; fall back to the card's creation time
+        var timestamp = card.LastViewedAt ?? card.CreatedAt;
+        return timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    }
+
+    private async Task SpeakCurrentCardAsync()
+    {
+        if (_currentCard is null) return;
+        var value = GetCurrentValue();
+        var lang = GetCurrentLanguage();
+        if (!string.IsNullOrEmpty(value.AudioPath))
+        {
+            await JS.InvokeVoidAsync("cardsApp.playRecording", value.AudioPath);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("cardsApp.speakText", value.Text, LanguageHelper.GetSpeechCode(lang));
+        }
+    }
+
+    // Each card always shows its own Language1 first; pressing "Show translation"
+    // flips the displayed side to Language2. There is no global selector here
+    // because cards in the level pool may belong to different language pairs.
+    private Language GetCurrentLanguage()
+    {
+        if (_currentCard is null) return Language.En;
+        return _answered ? _currentCard.Language2 : _currentCard.Language1;
+    }
+
+    private TermValue GetCurrentValue()
+    {
+        if (_currentCard is null) return new TermValue();
+        return _answered ? _currentCard.Value2 : _currentCard.Value1;
+    }
+
+    private static List<T> Shuffle<T>(List<T> list)
+    {
+        var result = new List<T>(list);
+        var rng = Random.Shared;
+        for (int i = result.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (result[i], result[j]) = (result[j], result[i]);
+        }
+        return result;
+    }
+}

@@ -27,6 +27,17 @@ public class TermCard
     public DateTime? LastViewedAt { get; set; }
 
     /// <summary>
+    /// Current SRS memorization level. New cards start at <see cref="SrsLevel.Level1"/>.
+    /// </summary>
+    public SrsLevel SrsLevel { get; set; } = SrsLevel.Level1;
+
+    /// <summary>
+    /// Number of correct attempts accumulated toward advancing to the next SRS level.
+    /// Incremented each time the user presses "Next" without first pressing "Show translation".
+    /// </summary>
+    public int CorrectAttempts { get; set; }
+
+    /// <summary>
     /// Single image for the card. New cards write the picture into <see cref="Value1"/>.
     /// Falls back to <see cref="Value2"/> for legacy cards that stored it on the second value.
     /// </summary>

@@ -233,9 +233,12 @@ else if (_currentCard is not null)
     private async Task HandleRemember()
     {
         // Cards that have already been peeked do not contribute to the correct counter
-        if (_currentCard is not null && !_failedCardIds.Contains(_currentCard.Id))
+        var pressedWithoutPeek = _currentCard is not null && !_failedCardIds.Contains(_currentCard.Id);
+        if (pressedWithoutPeek)
         {
             _correct++;
+            // "Next" without "Show translation" counts as a correct attempt toward the next SRS level
+            _currentCard!.CorrectAttempts++;
         }
 
         // Persist the view timestamp only when the current user is the card's creator,
@@ -244,10 +247,14 @@ else if (_currentCard is not null)
             && !string.IsNullOrEmpty(_userId)
             && string.Equals(_currentCard.UserId, _userId, StringComparison.Ordinal))
         {
-            var updated = await TermCardService.UpdateLastViewedAsync(_currentCard.Id, DateTime.UtcNow);
+            var updated = await TermCardService.UpdateLastViewedAsync(
+                _currentCard.Id,
+                DateTime.UtcNow,
+                _currentCard.CorrectAttempts);
             if (updated is not null)
             {
                 _currentCard.LastViewedAt = updated.LastViewedAt;
+                _currentCard.CorrectAttempts = updated.CorrectAttempts;
             }
         }
 

@@ -202,7 +202,7 @@ public class JsonTermCardService : ITermCardService
         }
     }
 
-    public async Task<TermCard?> UpdateLastViewedAsync(Guid id, DateTime viewedAt, CancellationToken ct = default)
+    public async Task<TermCard?> UpdateLastViewedAsync(Guid id, DateTime viewedAt, int correctAttempts, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
         try
@@ -212,6 +212,7 @@ public class JsonTermCardService : ITermCardService
             if (card is null) return null;
 
             card.LastViewedAt = viewedAt;
+            card.CorrectAttempts = correctAttempts;
 
             await WriteAsync(card, ct);
             return card;
