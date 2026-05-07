@@ -44,7 +44,7 @@ main {
     }
 
     .sidebar {
-        width: 240px;
+        width: 300px;
         flex-shrink: 0;
         height: 100vh;
         position: sticky;

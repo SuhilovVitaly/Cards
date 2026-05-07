@@ -115,6 +115,7 @@
     text-align: left;
     cursor: pointer;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .nav-link:hover,
@@ -136,65 +137,6 @@
     fill: currentColor;
 }
 
-/* SRS level navigation section */
-.nav-section-srs {
-    margin-top: 0.25rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.nav-section-label {
-    color: var(--c-text-dim);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    padding: 0.15rem 0.65rem 0.3rem;
-}
-
-.nav-level-num {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--c-text);
-    font-size: 0.7rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-}
-
-.nav-link-text {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.nav-count {
-    font-size: 0.72rem;
-    color: var(--c-text-dim);
-    background: rgba(255, 255, 255, 0.05);
-    padding: 0.05rem 0.4rem;
-    border-radius: 999px;
-    font-variant-numeric: tabular-nums;
-    min-width: 1.5rem;
-    text-align: center;
-}
-
-.nav-link-disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    color: var(--c-text-muted);
-}
-
-.nav-link-disabled:hover {
-    background: none;
-    color: var(--c-text-muted);
-    text-decoration: none;
-}
 
 .app-stats {
     margin-top: auto;

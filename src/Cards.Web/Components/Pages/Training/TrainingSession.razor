@@ -1,4 +1,5 @@
 @page "/training/{CollectionId:guid}"
+@page "/training/recent-24h"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @attribute [AllowAnonymous]
@@ -166,6 +167,7 @@ else if (_currentCard is not null)
 
     private string _userId = string.Empty;
     private Collection? _collection;
+    private bool _isDynamic;
     private Queue<TermCard> _queue = new();
     private TermCard? _currentCard;
     private Language _selectedLanguage;
@@ -189,7 +191,19 @@ else if (_currentCard is not null)
         var state = await AuthStateTask;
         _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
-        _collection = await CollectionService.GetByIdAsync(CollectionId);
+        // The "/training/recent-24h" route does not bind CollectionId, so we treat
+        // an empty Guid as the signal to build a dynamic (virtual) collection
+        _isDynamic = CollectionId == Guid.Empty;
+
+        if (_isDynamic)
+        {
+            _collection = await BuildRecent24hCollectionAsync();
+        }
+        else
+        {
+            _collection = await CollectionService.GetByIdAsync(CollectionId);
+        }
+
         // Anyone can train any collection. Block access only if the collection
         // does not exist or has no cards
         if (_collection is null || _collection.CardIds.Count == 0)
@@ -198,11 +212,63 @@ else if (_currentCard is not null)
             return;
         }
 
-        _isOwner = !string.IsNullOrEmpty(_userId) && _collection.UserId == _userId;
+        // Owner-only controls (add/edit/delete card) are tied to a real collection;
+        // disable them for the dynamic, on-the-fly collection
+        _isOwner = !_isDynamic
+            && !string.IsNullOrEmpty(_userId)
+            && _collection.UserId == _userId;
 
         _selectedLanguage = _collection.Language1;
         await StartSession();
         _needsAutoPlay = true;
+    }
+
+    private async Task<Collection?> BuildRecent24hCollectionAsync()
+    {
+        if (string.IsNullOrEmpty(_userId)) return null;
+
+        var collections = await CollectionService.GetAllAsync(_userId);
+        var cards = await TermCardService.GetAllByUserAsync(_userId);
+
+        var now = DateTime.UtcNow;
+        var window = TimeSpan.FromHours(24);
+
+        // Effective "last viewed" falls back to the creation time of any user collection
+        // that contains the card, per the rule: an empty LastViewedAt is treated
+        // as the collection's creation time
+        var matchingIds = new List<Guid>();
+        foreach (var card in cards)
+        {
+            DateTime effective;
+            if (card.LastViewedAt.HasValue)
+            {
+                effective = card.LastViewedAt.Value;
+            }
+            else
+            {
+                var owningCollection = collections.FirstOrDefault(c => c.CardIds.Contains(card.Id));
+                effective = owningCollection?.CreatedAt ?? card.CreatedAt;
+            }
+
+            if (now - effective < window)
+                matchingIds.Add(card.Id);
+        }
+
+        if (matchingIds.Count == 0) return null;
+
+        // Pick a language pair from the first matching card so that the language
+        // selector and Value1/Value2 lookup keep working in the shared training UI
+        var first = cards.First(c => c.Id == matchingIds[0]);
+
+        return new Collection
+        {
+            Id = Guid.Empty,
+            UserId = _userId,
+            Name = "SRC 24 hours",
+            Language1 = first.Language1,
+            Language2 = first.Language2,
+            CardIds = matchingIds
+        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

@@ -1,7 +1,4 @@
 ﻿@inject IAppInfoService AppInfo
-@inject ITermCardService TermCardService
-@inject NavigationManager Navigation
-@implements IDisposable
 
 <div class="sidebar-top">
     <a class="brand" href="">
@@ -40,6 +37,24 @@
                         </svg>
                         <span>New collection</span>
                     </NavLink>
+
+                    <NavLink class="nav-link" href="srs">
+                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" />
+                        </svg>
+                        <span>SRS &mdash; spaced repetition</span>
+                    </NavLink>
+
+                    <AuthorizeView Roles="Admin" Context="adminContext">
+                        <Authorized>
+                            <NavLink class="nav-link" href="backoffice">
+                                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 5h8v6H3V5zm10 0h8v3h-8V5zm0 5h8v9h-8v-9zM3 13h8v6H3v-6z" />
+                                </svg>
+                                <span>BackOffice</span>
+                            </NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </Authorized>
                 <NotAuthorized>
                     <NavLink class="nav-link" href="public">
@@ -61,36 +76,6 @@
 
         <AuthorizeView>
             <Authorized>
-                <div class="nav-section nav-section-srs">
-                    <div class="nav-section-label">SRS levels</div>
-                    @foreach (var level in _srsLevels)
-                    {
-                        var levelNum = (int)level;
-                        var count = _counts.TryGetValue(level, out var c) ? c : 0;
-                        var label = GetSrsLabel(level);
-                        if (count == 0)
-                        {
-                            <span class="nav-link nav-link-disabled" title="No cards at this level">
-                                <span class="nav-level-num">@levelNum</span>
-                                <span class="nav-link-text">@label</span>
-                                <span class="nav-count">0</span>
-                            </span>
-                        }
-                        else
-                        {
-                            <NavLink class="nav-link" href="@($"training/srs/{levelNum}")">
-                                <span class="nav-level-num">@levelNum</span>
-                                <span class="nav-link-text">@label</span>
-                                <span class="nav-count">@count</span>
-                            </NavLink>
-                        }
-                    }
-                </div>
-            </Authorized>
-        </AuthorizeView>
-
-        <AuthorizeView>
-            <Authorized>
                 <div class="nav-user-label">@context.User.Identity?.Name</div>
                 <div class="nav-section nav-section-user">
                     <form action="logout" method="post" class="m-0 p-0">
@@ -106,78 +91,9 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <div class="nav-section">
-                    <NavLink class="nav-link" href="backoffice">
-                        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M3 5h8v6H3V5zm10 0h8v3h-8V5zm0 5h8v9h-8v-9zM3 13h8v6H3v-6z" />
-                        </svg>
-                        <span>BackOffice</span>
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-
         <div class="app-stats">
             <span class="app-stats-label">Version</span>
             <span class="app-stats-value">@AppInfo.Version</span>
         </div>
     </nav>
 </div>
-
-@code {
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthState { get; set; }
-
-    private static readonly SrsLevel[] _srsLevels = Enum.GetValues<SrsLevel>();
-    private Dictionary<SrsLevel, int> _counts = new();
-    private string _userId = string.Empty;
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (AuthState is not null)
-        {
-            var state = await AuthState;
-            _userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        }
-        await LoadCountsAsync();
-        // Refresh counts on every navigation so the sidebar reflects card add/delete
-        // and any future changes that affect SrsLevel distribution.
-        Navigation.LocationChanged += OnLocationChanged;
-    }
-
-    private async Task LoadCountsAsync()
-    {
-        if (string.IsNullOrEmpty(_userId))
-        {
-            _counts = new Dictionary<SrsLevel, int>();
-            return;
-        }
-        var cards = await TermCardService.GetAllByUserAsync(_userId);
-        _counts = _srsLevels.ToDictionary(l => l, l => cards.Count(c => c.SrsLevel == l));
-    }
-
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        await LoadCountsAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Navigation.LocationChanged -= OnLocationChanged;
-    }
-
-    private static string GetSrsLabel(SrsLevel level) => level switch
-    {
-        SrsLevel.Level1 => "Initial fixation",
-        SrsLevel.Level2 => "Hold in short-term memory",
-        SrsLevel.Level3 => "First step to mid-term memory",
-        SrsLevel.Level4 => "Strengthen connection",
-        SrsLevel.Level5 => "Stability check",
-        SrsLevel.Level6 => "Transfer to long-term memory",
-        SrsLevel.Level7 => "Long-term retention",
-        _ => level.ToString()
-    };
-}
